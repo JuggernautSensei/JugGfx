@@ -1,0 +1,9 @@
+[submodule "JugGfx/Vendor/gli"]
+	path = JugGfx/Vendor/gli
+	url = https://github.com/g-truc/gli.git
+[submodule "JugGfx/Vendor/stb"]
+	path = JugGfx/Vendor/stb
+	url = https://github.com/nothings/stb.git
+[submodule "JugGfx/Vendor/imgui"]
+	path = JugGfx/Vendor/imgui
+	url = https://github.com/ocornut/imgui.git

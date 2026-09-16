@@ -1,0 +1,8 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="../JugX/JugX.vcxproj" Id="71c0cb85-1218-4140-95ff-caca4f615774" />
+  <Project Path="JugGfx.vcxproj" Id="deefa6fc-767a-4cd0-bd6f-6c1be93ecb5e" />
+</Solution>

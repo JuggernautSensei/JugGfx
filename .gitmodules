@@ -7,3 +7,6 @@
 [submodule "JugGfx/Vendor/imgui"]
 	path = JugGfx/Vendor/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "JugGfx/Vendor/OpenImageIO"]
+	path = JugGfx/Vendor/OpenImageIO
+	url = https://github.com/AcademySoftwareFoundation/OpenImageIO.git

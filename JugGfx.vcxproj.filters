@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="JugGfx\Graphics.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Shader.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Image.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\pch.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Base.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Texture.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\VertexLayout.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Error.cpp">
+      <Filter>Error</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\API.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\DXGI.cpp">
+      <Filter>Core\DirectX</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\DxUtils.cpp">
+      <Filter>Core\DirectX</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="JugGfx\Graphics.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Shader.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Image.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\pch.h">
+      <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Base.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Texture.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\VertexLayout.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Error.h">
+      <Filter>Error</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\API.h">
+      <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\DXGI.h">
+      <Filter>Core\DirectX</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\DxUtils.h">
+      <Filter>Core\DirectX</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{c8ea93bf-ac2d-4858-8d68-31721be5cdc1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Base">
+      <UniqueIdentifier>{419a3a41-fa99-43d5-9b8f-aa9dd13e1927}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{2758f465-f358-4260-aa53-cd49969989c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Error">
+      <UniqueIdentifier>{ea9297bc-0bae-4027-af2f-577772e6f980}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\DirectX">
+      <UniqueIdentifier>{b9434dc7-8c65-4739-b202-471465935189}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

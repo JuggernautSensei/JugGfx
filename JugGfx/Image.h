@@ -18,9 +18,9 @@ public:
     [[nodiscard]] static Result<Image> LoadFromFile(const FilePath& _path);
 
     [[nodiscard]] const OIIO::ImageSpec& GetSpec() const;
-    [[nodiscard]] Result<Memory>         Read(int _layer, int _mip) const;
-    [[nodiscard]] int                    GetNumLayers() const;
-    [[nodiscard]] int                    GetNumMips() const;
+    [[nodiscard]] Result<Memory>         Read(uint32_t _layer, uint32_t _mip) const;
+    [[nodiscard]] uint32_t               GetNumLayers() const;
+    [[nodiscard]] uint32_t               GetNumMips() const;
 
 private:
     Image() = default;
@@ -29,8 +29,8 @@ private:
     void  PostLoad_();
 
     std::unique_ptr<OIIO::ImageInput> m_pImage    = nullptr;
-    int                               m_numLayers = 0;
-    int                               m_numMips   = 0;
+    uint32_t                          m_numLayers = 0;
+    uint32_t                          m_numMips   = 0;
 };
 
 }   // namespace jug

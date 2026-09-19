@@ -212,7 +212,7 @@ ISwapChain* DXGI::CreateSwapChain(
     return pSwapChain;
 }
 
-void DXGI::UpdateCaps(
+void DXGI::FillCaps(
     GraphicsCaps& _inoutCaps) const
 {
     if (m_pAdapterOrNull)
@@ -220,11 +220,11 @@ void DXGI::UpdateCaps(
         DXGI_ADAPTER_DESC1 ad = {};
         if (SUCCEEDED(m_pAdapterOrNull->GetDesc1(&ad)))
         {
-            _inoutCaps.vendorID           = ad.VendorId;
-            _inoutCaps.deviceID           = ad.DeviceId;
-            _inoutCaps.videoMemory        = ad.DedicatedVideoMemory;
-            _inoutCaps.systemMemory       = ad.DedicatedSystemMemory;
-            _inoutCaps.sharedSystemMemory = ad.SharedSystemMemory;
+            _inoutCaps.vendorID               = ad.VendorId;
+            _inoutCaps.deviceID               = ad.DeviceId;
+            _inoutCaps.videoMemorySize        = ad.DedicatedVideoMemory;
+            _inoutCaps.systemMemorySize       = ad.DedicatedSystemMemory;
+            _inoutCaps.sharedSystemMemorySize = ad.SharedSystemMemory;
         }
     }
 

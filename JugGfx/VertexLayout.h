@@ -53,8 +53,8 @@ public:
     [[nodiscard]] const VertexAttribute&      Get(eVertexAttribute _attrib) const;
     [[nodiscard]] uint64_t                    GetHash() const;
     [[nodiscard]] uint32_t                    GetStride() const;
-    [[nodiscard]] size_t                      GetNumAttribs() const;
-    [[nodiscard]] Span<const VertexAttribute> GetAttributs() const;
+    [[nodiscard]] size_t                      GetNumAttributes() const;
+    [[nodiscard]] Span<const VertexAttribute> GetAttributes() const;
 
 private:
     constexpr static uint64_t kDirtyHash = 0;

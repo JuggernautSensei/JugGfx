@@ -23,7 +23,7 @@ public:
     DXGI& operator=(DXGI&& _other) noexcept;
 
     ISwapChain* CreateSwapChain(IUnknown* _pDevice, void* _pWindow, bool _bWindowed, const DXGI_SWAP_CHAIN_DESC1& _desc) const;
-    void        UpdateCaps(GraphicsCaps& _inoutCaps) const;
+    void        FillCaps(GraphicsCaps& _inoutCaps) const;
 
     [[nodiscard]] IAdapter* GetAdapterOrNull() const;
     [[nodiscard]] IFactory* GetFactory() const;

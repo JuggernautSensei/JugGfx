@@ -35,6 +35,20 @@ bool IsSRGB(
     }
 }
 
+eTextureFormat ToNonSRGB(
+    const eTextureFormat _format)
+{
+    switch (_format)   // NOLINT
+    {
+        case eTextureFormat::RGBA8_UNorm_SRGB:
+            return eTextureFormat::RGBA8_UNorm;
+        case eTextureFormat::BGRA8_UNorm_SRGB:
+            return eTextureFormat::BGRA8_UNorm;
+        default:
+            return _format;
+    }
+}
+
 eTextureFormat ToSrgbOrUnknown(
     const eTextureFormat _format)
 {
@@ -49,7 +63,7 @@ eTextureFormat ToSrgbOrUnknown(
     }
 }
 
-int GetBitPerPixel(
+uint32_t GetBitPerPixel(
     const eTextureFormat _format)
 {
     switch (_format)
@@ -141,40 +155,30 @@ int GetBitPerPixel(
     }
 }
 
-int CalcNumMips(
-    const int _width,
-    const int _height,
-    const int _depth)
+uint32_t CalcNumMips(
+    const uint32_t _width,
+    const uint32_t _height,
+    const uint32_t _depth)
 {
     JUG_ASSERT(_width > 0 && _height > 0 && _depth > 0, "Width, height and depth must be greater than zero");
-    return 1 + static_cast<int>(Log2(static_cast<float>(Max(_width, _height, _depth))));
+    return std::bit_width(Max(_width, _height, _depth));
 }
 
-VECTOR3I CalcTextureSize(
-    const int _width,
-    const int _height,
-    const int _depth,
-    const int _mip)
+CalcTextureSizeResult CalcTextureSize(
+    const uint32_t _width,
+    const uint32_t _height,
+    const uint32_t _depth,
+    const uint32_t _mip)
 {
     JUG_ASSERT(_width > 0 && _height > 0 && _depth > 0, "Width, height and depth must be greater than zero");
-    JUG_ASSERT(_mip >= 0, "Mip level must be greater than or equal to zero");
-
-    VECTOR3I size = { _width, _height, _depth };
-    for (int i = 0; i < _mip; ++i)
-    {
-        size.x = Max(1, size.x >> 1);
-        size.y = Max(1, size.y >> 1);
-        size.z = Max(1, size.z >> 1);
-    }
-    return size;
+    return { Max(1u, _width >> _mip), Max(1u, _height >> _mip), Max(1u, _depth >> _mip) };
 }
 
-int CalcTextureIndex(
-    const int _mip,
-    const int _layer,
-    const int _numMips)
+uint32_t CalcTextureIndex(
+    const uint32_t _mip,
+    const uint32_t _layer,
+    const uint32_t _numMips)
 {
-    JUG_ASSERT(_mip >= 0 && _layer >= 0 && _numMips > 0, "Mip, layer and numMips must be greater than or equal to zero");
     return _layer * _numMips + _mip;
 }
 

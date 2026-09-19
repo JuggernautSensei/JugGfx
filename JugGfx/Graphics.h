@@ -1,22 +1,10 @@
 ﻿#pragma once
-// ===========================================================================
-//  [AI] 2026-09-16 헤더 변경 요약  (검색: "[AI]")
-//    1. 정의가 없던 BufferCreateParam / TextureCreateParam / SwapChainDesc 를 쓰던 private 선언 정리.
-//       (버퍼 생성은 CreateXxxBuffer_ 들이 이미 직접 하고, 텍스처는 TextureDesc 를 그대로 받게 했다)
-//    2. 삭제된 디버그 그룹 API 복구. m_pUserAnnotationOrNull 멤버만 남아 있어서 되살렸다.
-//    3. InitDebugInterfacesIfNeed_ 추가. 디버그/인포큐/어노테이션 인터페이스를 채우는 곳이 없었다.
-//    4. 업로드 스테이징 캐시(m_pUploadBuffer, GetOrCreateUploadBuffer_/GetOrCreateReadbackBuffer_) 제거.
-//    5. TimerQuery::bIssued 추가. 발급 안 된 쿼리를 회수에서 걸러내야 한다.
-//    6. CreateFrameBufferViews_ / FillAttachments_ 의 bool 반환 제거(실패하면 어차피 크래시).
-// ===========================================================================
-
 #include <JugX/EnumArray.h>
 #include <JugX/MemoryView.h>
 #include <JugX/NoopHasher.h>
 #include <JugX/ResourcePool.h>
 #include <JugX/RGBA.h>
 #include <JugX/RingBuffer.h>
-#include <JugX/Vector3I.h>
 
 #include "Base.h"
 #include "DXGI.h"
@@ -39,25 +27,34 @@ class Graphics
     struct VertexBufferD3D11 : public VertexBufferDesc
     {
         ID3D11Buffer* pBuffer = nullptr;
+        bool          bMapped = false;
+    };
+
+    struct InstanceBufferD3D11 : public InstanceBufferDesc
+    {
+        ID3D11Buffer* pBuffer = nullptr;
+        bool          bMapped = false;
     };
 
     struct IndexBufferD3D11 : public IndexBufferDesc
     {
         ID3D11Buffer* pBuffer = nullptr;
         DXGI_FORMAT   format  = DXGI_FORMAT_UNKNOWN;
+        bool          bMapped = false;
     };
 
     struct StorageBufferD3D11 : public StorageBufferDesc
     {
-        ID3D11Buffer* pBuffer = nullptr;
-
-        ID3D11ShaderResourceView*  pSRV = nullptr;
-        ID3D11UnorderedAccessView* pUAV = nullptr;
+        ID3D11Buffer*              pBuffer = nullptr;
+        ID3D11ShaderResourceView*  pSRV    = nullptr;
+        ID3D11UnorderedAccessView* pUAV    = nullptr;
+        bool                       bMapped = false;
     };
 
     struct ConstantBufferD3D11 : public ConstantBufferDesc
     {
         ID3D11Buffer* pBuffer = nullptr;
+        bool          bMapped = false;
     };
 
     struct TextureD3D11 : public TextureDesc
@@ -82,13 +79,9 @@ class Graphics
 
     struct FrameBufferD3D11 : public FrameBufferDesc
     {
-        ARRAY<ID3D11RenderTargetView*, kNumMaxRenderTargetSlots> rtvs = {};
-        ID3D11DepthStencilView*                                  pDSV = nullptr;
-
-        bool             bOwnership     = false;
-        IDXGISwapChain3* pDxgiSwapChain = nullptr;
-        uint32_t         dxgiFlags      = 0;
-        bool             bVSync         = true;
+        ARRAY<ID3D11RenderTargetView*, kNumMaxRenderTargetSlots> rtvs       = {};
+        ID3D11DepthStencilView*                                  pDSV       = nullptr;
+        ISwapChain*                                              pSwapChain = nullptr;
     };
 
     struct ShaderD3D11 : public ShaderDesc
@@ -96,17 +89,11 @@ class Graphics
         JUG_DISABLE_ANON_WARNING_BEGIN
         union
         {
-            ID3D11VertexShader*  pVS;
+            ID3D11VertexShader*  pVS = nullptr;
             ID3D11PixelShader*   pPS;
             ID3D11ComputeShader* pCS;
         };
         JUG_DISABLE_ANON_WARNING_END
-    };
-
-    struct VertexLayoutD3D11
-    {
-        VertexLayout vertexLayout = {};
-        int          refCount     = 0;
     };
 
     // ===========================================
@@ -114,6 +101,7 @@ class Graphics
     // ===========================================
 
     using VertexBufferPool   = ResourcePool<VertexBufferHandle, VertexBufferD3D11>;
+    using InstanceBufferPool = ResourcePool<InstanceBufferHandle, InstanceBufferD3D11>;
     using IndexBufferPool    = ResourcePool<IndexBufferHandle, IndexBufferD3D11>;
     using StorageBufferPool  = ResourcePool<StorageBufferHandle, StorageBufferD3D11>;
     using ConstantBufferPool = ResourcePool<ConstantBufferHandle, ConstantBufferD3D11>;
@@ -121,7 +109,7 @@ class Graphics
     using FrameBufferPool    = ResourcePool<FrameBufferHandle, FrameBufferD3D11>;
     using ShaderPool         = ResourcePool<ShaderHandle, ShaderD3D11>;
     using ProgramPool        = ResourcePool<ProgramHandle, ProgramDesc>;
-    using VertexLayoutPool   = ResourcePool<VertexLayoutHandle, VertexLayoutD3D11>;
+    using VertexLayoutPool   = ResourcePool<VertexLayoutHandle, VertexLayoutDesc>;
 
     // ===========================================
     //  Pipeline
@@ -140,27 +128,17 @@ class Graphics
         Program        = 1 << 5,
         ComputeProgram = 1 << 6,
 
-        VS_ShaderResourceView = 1 << 7,
-        PS_ShaderResourceView = 1 << 8,
-        CS_ShaderResourceView = 1 << 9,
+        ConstantBuffer      = 1 << 7,
+        ShaderResourceView  = 1 << 8,
+        UnorderedAccessView = 1 << 9,
+        SamplerState        = 1 << 10,
 
-        VS_ConstantBuffer = 1 << 10,
-        PS_ConstantBuffer = 1 << 11,
-        CS_ConstantBuffer = 1 << 12,
-
-        PS_UnorderedAccessView = 1 << 13,
-        CS_UnorderedAccessView = 1 << 14,
-
-        VS_SamplerState = 1 << 15,
-        PS_SamplerState = 1 << 16,
-        CS_SamplerState = 1 << 17,
-
-        RasterizerState   = 1 << 18,
-        BlendState        = 1 << 19,
-        DepthStencilState = 1 << 20,
-        Viewport          = 1 << 21,
-        ScissorRect       = 1 << 22,
-        FrameBuffer       = 1 << 23,
+        RasterizerState   = 1 << 11,
+        BlendState        = 1 << 12,
+        DepthStencilState = 1 << 13,
+        Viewport          = 1 << 14,
+        ScissorRect       = 1 << 15,
+        FrameBuffer       = 1 << 16,
     };
 
     enum class eResource
@@ -169,18 +147,35 @@ class Graphics
         Texture,
     };
 
-    enum class eShaderRW
-    {
-        Pixel,
-        Compute
-    };
-
     struct Resource
     {
-        [[nodiscard]] bool operator==(const Resource&) const = default;
+        Resource() = default;
+        /* implicit */ Resource(
+            const TextureHandle _texh)
+            : texh(_texh)
+            , type(eResource::Texture)
+        {
+        }
 
-        uint32_t  handle = 0xFFFF'FFFF;
-        eResource type   = eResource::Texture;
+        /* implicit */ Resource(
+            const StorageBufferHandle _sbh)
+            : sbh(_sbh)
+            , type(eResource::Buffer)
+        {
+        }
+
+        [[nodiscard]] bool operator==(
+            const Resource _other) const
+        {
+            return type == _other.type && texh.GetValue() == _other.texh.GetValue();
+        }
+
+        union
+        {
+            TextureHandle       texh = kNullHandle;
+            StorageBufferHandle sbh;
+        };
+        eResource type = eResource::Texture;
     };
 
     struct Sampler
@@ -191,11 +186,11 @@ class Graphics
         RGBA            border = {};
     };
 
-    template<typename T, typename U, size_t kSize>
+    template<typename T, typename U, uint32_t kSize>
     struct ResourceBind
     {
         void MarkDirty(
-            const int _slot)
+            const uint32_t _slot)
         {
             dirtyBegin = Min(dirtyBegin, _slot);
             dirtyEnd   = Max(dirtyEnd, _slot + 1);
@@ -203,7 +198,7 @@ class Graphics
 
         void ClearDirty()
         {
-            dirtyBegin = Max<int>();
+            dirtyBegin = Max<uint32_t>();
             dirtyEnd   = 0;
         }
 
@@ -212,7 +207,7 @@ class Graphics
             return dirtyBegin < dirtyEnd;
         }
 
-        [[nodiscard]] int NumDirties() const
+        [[nodiscard]] uint32_t NumDirties() const
         {
             return dirtyEnd - dirtyBegin;
         }
@@ -220,8 +215,8 @@ class Graphics
         ARRAY<T, kSize> d3d11Resources = {};
         ARRAY<U, kSize> resources      = {};
 
-        int dirtyBegin = 0;
-        int dirtyEnd   = 0;
+        uint32_t dirtyBegin = 0;
+        uint32_t dirtyEnd   = kSize;
     };
 
     using ReadBind      = ResourceBind<ID3D11ShaderResourceView*, Resource, kNumMaxReadSlots>;
@@ -229,31 +224,44 @@ class Graphics
     using CBufferBind   = ResourceBind<ID3D11Buffer*, ConstantBufferHandle, kNumMaxCBufferSlots>;
     using SamplerBind   = ResourceBind<ID3D11SamplerState*, Sampler, kNumMaxSamplerSlots>;
 
+    // ===========================================
+    //  Misc
+    // ===========================================
+
     struct TimerQuery
     {
-        ID3D11Query* pBegin    = nullptr;
-        ID3D11Query* pEnd      = nullptr;
-        ID3D11Query* pDisjoint = nullptr;
-        bool         bIssued   = false;
+        ID3D11Query* pBegin     = nullptr;
+        ID3D11Query* pEnd       = nullptr;
+        ID3D11Query* pDisjoint  = nullptr;
+        uint64_t     frameIndex = 0;
+        bool         bIssued    = false;
+    };
+
+    struct ResolveBufferRefResult
+    {
+        ID3D11Buffer* pBuffer   = nullptr;
+        uint32_t      byteWidth = 0;
+        bool          bDynamic  = false;
     };
 
 public:
     explicit Graphics(bool _bEnableDebugLayer);
     ~Graphics();
+
     [[nodiscard]] static Graphics* GetInstance();
 
     // ===========================================
     //  System
     // ===========================================
 
-    void Present();
+    void Frame();
 
     size_t                             ReportLiveObjects();
     [[nodiscard]] const GraphicsCaps&  GetCaps() const;
     [[nodiscard]] const GraphicsStats& GetStats() const;
 
     // ===========================================
-    //  Vertex Buffer
+    //  Vertex Stream
     // ===========================================
 
     [[nodiscard]] VertexBufferHandle CreateVertexBuffer(
@@ -264,12 +272,9 @@ public:
         uint32_t            _numVertices,
         const VertexLayout& _vl);
 
-    [[nodiscard]] VertexBufferHandle CreateInstanceBuffer(
+    [[nodiscard]] InstanceBufferHandle CreateInstanceBuffer(
         uint32_t _numInstances,
         uint32_t _stride);
-
-    [[nodiscard]] VertexLayoutHandle CreateVertexLayout(
-        const VertexLayout& _vl);
 
     // ===========================================
     //  Index Buffer
@@ -307,26 +312,35 @@ public:
         uint32_t                    _numDraws,
         Flags<eStorageBufferOption> _flags);
 
-    [[nodiscard]] size_t ReadBuffer(
-        StorageBufferHandle _readbackSbh,
-        MutableMemoryView   _dst);
-
     // ===========================================
     //  Buffer Utils
     // ===========================================
 
     void UpdateBuffer(
-        AnyBufferHandle _abh,
-        MemoryView      _data,
-        uint32_t        _offset   = 0,
-        bool            _bDiscard = true);
+        BufferRef  _buffer,
+        MemoryView _data,
+        uint32_t   _offset = 0);
+
+    [[nodiscard]] MutableMemoryView MapBuffer(
+        BufferRef _buffer);
+
+    void UnmapBuffer(
+        BufferRef _buffer);
 
     void CopyBuffer(
-        AnyBufferHandle _dst,
-        uint32_t        _dstOffset,
-        AnyBufferHandle _src,
-        uint32_t        _srcOffset,
-        uint32_t        _byteWidth = kWholeSize);
+        BufferRef _dst,
+        BufferRef _src);
+
+    void CopyBuffer(
+        BufferRef _dst,
+        uint32_t  _dstOffset,
+        BufferRef _src,
+        uint32_t  _srcOffset,
+        uint32_t  _byteWidthOrZero = 0);
+
+    [[nodiscard]] size_t ReadBuffer(
+        StorageBufferHandle _readbackSbh,
+        MutableMemoryView   _dst);
 
     // ===========================================
     //  Texture
@@ -336,7 +350,6 @@ public:
         uint32_t               _width,
         uint32_t               _height,
         eTextureFormat         _format,
-        bool                   _bHasMips        = false,
         uint32_t               _numLayers       = 1,
         eMSAA                  _msaa            = eMSAA::None,
         Flags<eTextureOption>  _flags           = eTextureOption::None,
@@ -346,7 +359,6 @@ public:
         uint32_t               _width,
         uint32_t               _height,
         eTextureFormat         _format,
-        bool                   _bHasMips        = false,
         uint32_t               _numCubes        = 1,
         Flags<eTextureOption>  _flags           = eTextureOption::None,
         Span<const MemoryView> _initDataOrEmpty = {});
@@ -356,7 +368,6 @@ public:
         uint32_t               _height,
         uint32_t               _depth,
         eTextureFormat         _format,
-        bool                   _bHasMips        = false,
         Flags<eTextureOption>  _flags           = eTextureOption::None,
         Span<const MemoryView> _initDataOrEmpty = {});
 
@@ -368,8 +379,7 @@ public:
         uint32_t      _y,
         uint32_t      _width,
         uint32_t      _height,
-        MemoryView    _data,
-        uint32_t      _rowPitch);
+        MemoryView    _data);
 
     void UpdateTextureCube(
         TextureHandle _texh,
@@ -380,8 +390,7 @@ public:
         uint32_t      _y,
         uint32_t      _width,
         uint32_t      _height,
-        MemoryView    _data,
-        uint32_t      _rowPitch);
+        MemoryView    _data);
 
     void UpdateTexture3D(
         TextureHandle _texh,
@@ -392,25 +401,31 @@ public:
         uint32_t      _width,
         uint32_t      _height,
         uint32_t      _depth,
-        MemoryView    _data,
-        uint32_t      _rowPitch,
-        uint32_t      _depthPitch);
+        MemoryView    _data);
 
     void CopyTexture(
-        Subresource _dst,
-        uint32_t    _dstX,
-        uint32_t    _dstY,
-        uint32_t    _dstZ,
-        Subresource _src,
-        uint32_t    _srcX,
-        uint32_t    _srcY,
-        uint32_t    _srcZ,
-        uint32_t    _width,
-        uint32_t    _height,
-        uint32_t    _depth);
+        TextureHandle _dstTexh,
+        TextureHandle _srcTexh);
+
+    void CopyTexture(
+        TextureHandle _dstTexh,
+        uint32_t      _dstMip,
+        uint32_t      _dstLayer,
+        uint32_t      _dstX,
+        uint32_t      _dstY,
+        uint32_t      _dstZ,
+        TextureHandle _srcTexh,
+        uint32_t      _srcMip,
+        uint32_t      _srcLayer,
+        uint32_t      _srcX,
+        uint32_t      _srcY,
+        uint32_t      _srcZ,
+        uint32_t      _widthOrZero,
+        uint32_t      _heightOrZero,
+        uint32_t      _depthOrZero);
 
     [[nodiscard]] size_t ReadTexture(
-        TextureHandle     _texh,
+        TextureHandle     _readbackTexh,
         uint32_t          _mip,
         uint32_t          _layer,
         MutableMemoryView _dst);
@@ -420,35 +435,50 @@ public:
     // ===========================================
 
     [[nodiscard]] FrameBufferHandle CreateFrameBuffer(
-        Span<const Attachment> _attachments,
-        bool                   _bOwnership);
+        Span<const Attachment> _atts,
+        bool                   _bOwnership = false);
 
     [[nodiscard]] FrameBufferHandle CreateFrameBuffer(
         TextureHandle _texh,
-        bool          _bOwnership);
+        bool          _bOwnership = false);
 
     [[nodiscard]] FrameBufferHandle CreateFrameBuffer(
         void*          _pWindow,
         uint32_t       _width,
         uint32_t       _height,
         eTextureFormat _format,
-        eMSAA          _msaa);
+        uint32_t       _numBuffers);
 
     void ResizeFrameBuffer(
-        FrameBufferHandle _fbh,
+        FrameBufferHandle _swapChainFbh,
         uint32_t          _width,
         uint32_t          _height);
 
     void SetVSync(
-        FrameBufferHandle _fbh,
+        FrameBufferHandle _swapChainFbh,
         bool              _bVSync);
+
+    void ClearRenderTarget(
+        FrameBufferHandle _fbh,
+        RGBA              _color,
+        uint32_t          _slot = 0);
+
+    void ClearRenderTargets(
+        FrameBufferHandle _fbh,
+        RGBA              _color);
+
+    void ClearDepthStencil(
+        FrameBufferHandle _fbh,
+        bool              _bClearDepth,
+        bool              _bClearStencil,
+        float             _depth   = 1.f,
+        uint8_t           _stencil = 0);
 
     // ===========================================
     //  Shader & Program
     // ===========================================
 
     [[nodiscard]] ShaderHandle CreateShader(
-        eShader    _stage,
         MemoryView _bytecode);
 
     [[nodiscard]] ProgramHandle CreateProgram(
@@ -465,8 +495,8 @@ public:
     // ===========================================
 
     void Destroy(VertexBufferHandle _vbh);
+    void Destroy(InstanceBufferHandle _instbh);
     void Destroy(IndexBufferHandle _ibh);
-    void Destroy(VertexLayoutHandle _vlh);
     void Destroy(ConstantBufferHandle _cbh);
     void Destroy(StorageBufferHandle _sbh);
     void Destroy(TextureHandle _texh);
@@ -479,6 +509,7 @@ public:
     // ===========================================
 
     void SetName(VertexBufferHandle _vbh, StringView _name);
+    void SetName(InstanceBufferHandle _instbh, StringView _name);
     void SetName(IndexBufferHandle _ibh, StringView _name);
     void SetName(ConstantBufferHandle _cbh, StringView _name);
     void SetName(StorageBufferHandle _sbh, StringView _name);
@@ -486,16 +517,16 @@ public:
     void SetName(FrameBufferHandle _fbh, StringView _name);
     void SetName(ShaderHandle _sh, StringView _name);
 
-    // [AI] 디버그 그룹 API. 헤더에서 선언이 빠져 있었는데 m_pUserAnnotationOrNull 멤버가 남아 있어 되살렸다.
-    void PushDebugGroup(StringView _name);
-    void PopDebugGroup();
-    void SetDebugMarker(StringView _name);
+    void PushDebugGroup(StringView _name) const;
+    void PopDebugGroup() const;
+    void SetDebugMarker(StringView _name) const;
 
     // ===========================================
     //  Getter
     // ===========================================
 
     [[nodiscard]] const VertexBufferDesc&   GetDesc(VertexBufferHandle _vbh) const;
+    [[nodiscard]] const InstanceBufferDesc& GetDesc(InstanceBufferHandle _instbh) const;
     [[nodiscard]] const IndexBufferDesc&    GetDesc(IndexBufferHandle _ibh) const;
     [[nodiscard]] const ConstantBufferDesc& GetDesc(ConstantBufferHandle _cbh) const;
     [[nodiscard]] const StorageBufferDesc&  GetDesc(StorageBufferHandle _sbh) const;
@@ -503,27 +534,6 @@ public:
     [[nodiscard]] const ShaderDesc&         GetDesc(ShaderHandle _sh) const;
     [[nodiscard]] const ProgramDesc&        GetDesc(ProgramHandle _ph) const;
     [[nodiscard]] const FrameBufferDesc&    GetDesc(FrameBufferHandle _fbh) const;
-    [[nodiscard]] const VertexLayout&       GetVertexLayout(VertexLayoutHandle _vlh) const;
-
-    // ===========================================
-    //  Clear
-    // ===========================================
-
-    void ClearRenderTarget(
-        FrameBufferHandle _fbh,
-        RGBA              _color,
-        int               _slot = 0);
-
-    void ClearRenderTargets(
-        FrameBufferHandle _fbh,
-        RGBA              _color);
-
-    void ClearDepthStencil(
-        FrameBufferHandle _fbh,
-        bool              _bClearDepth,
-        bool              _bClearStencil,
-        float             _depth   = 1.f,
-        uint8_t           _stencil = 0);
 
     // ===========================================
     //  Bind
@@ -531,89 +541,89 @@ public:
 
     void SetVertexBuffer(
         VertexBufferHandle _vbh,
-        uint32_t           _offset      = 0,
-        uint32_t           _numVertices = kWholeSize);
+        uint32_t           _offset            = 0,
+        uint32_t           _numVerticesOrZero = 0);
+
+    void SetVertexBuffers(
+        Span<const VertexStream> _streams,
+        uint32_t                 _numVerticesOrZero = 0);
 
     void SetVertexBuffer(
-        VertexBufferHandle _vbh,
-        uint32_t           _offset,
-        uint32_t           _numVertices,
-        VertexBufferHandle _instanceVbh,
-        uint32_t           _instanceOffset = 0,
-        uint32_t           _numInstances   = kWholeSize);
+        VertexBufferHandle   _vbh,
+        uint32_t             _offset,
+        uint32_t             _numVerticesOrZero,
+        InstanceBufferHandle _instbh,
+        uint32_t             _instanceOffset     = 0,
+        uint32_t             _numInstancesOrZero = 0);
 
     void SetVertexBuffers(
         Span<const VertexStream> _streams,
-        uint32_t                 _numVertices = kWholeSize);
-
-    void SetVertexBuffers(
-        Span<const VertexStream> _streams,
-        uint32_t                 _numVertices,
-        VertexBufferHandle       _instanceVbh,
-        uint32_t                 _instanceOffset = 0,
-        uint32_t                 _numInstances   = kWholeSize);
+        uint32_t                 _numVerticesOrZero,
+        InstanceBufferHandle     _instbh,
+        uint32_t                 _instanceOffset     = 0,
+        uint32_t                 _numInstancesOrZero = 0);
 
     void SetIndexBuffer(
         IndexBufferHandle _ibh,
-        uint32_t          _offset     = 0,
-        uint32_t          _numIndices = kWholeSize);
+        uint32_t          _offset           = 0,
+        uint32_t          _numIndicesOrZero = 0);
 
     void SetConstantBuffer(
         ConstantBufferHandle _cbh,
         eShader              _shader,
-        int                  _slot);
+        uint32_t             _slot);
 
     void SetTexture(
         TextureHandle _texh,
         eShader       _shader,
-        int           _slot);
+        uint32_t      _slot);
 
     void SetTextureRW(
         TextureHandle _texh,
-        eShader       _shader,
-        int           _slot);
+        eShaderRW     _shader,
+        uint32_t      _slot);
 
     void SetBuffer(
         StorageBufferHandle _sbh,
         eShader             _shader,
-        int                 _slot);
+        uint32_t            _slot);
 
     void SetBufferRW(
         StorageBufferHandle _sbh,
-        eShader             _shader,
-        int                 _slot);
+        eShaderRW           _shader,
+        uint32_t            _slot);
 
     void SetSampler(
         Flags<eSampler> _flags,
         eShader         _shader,
-        int             _slot);
+        uint32_t        _slot);
 
     void SetSampler(
         Flags<eSampler> _flags,
-        RGBA            _borderColor,
+        RGBA            _border,
         eShader         _shader,
-        int             _slot);
+        uint32_t        _slot);
 
     void SetRenderState(
         Flags<eRenderState> _flags);
 
     void SetBlend(
         Flags<eBlend> _flags,
-        int           _slot = 0);
+        uint32_t      _slot = 0);
 
     void SetBlendFactor(
         RGBA _factor);
 
     void SetStencil(
-        Flags<eStencil> _frontFace,
-        Flags<eStencil> _backFace,
+        Flags<eStencil> _frontFlags,
+        Flags<eStencil> _backFlags,
         uint8_t         _stencilRef = 0);
 
     void SetProgram(
-        ProgramHandle _phOrNull);
+        ProgramHandle _ph);
 
     void SetComputeProgram(
-        ProgramHandle _phOrNull);
+        ProgramHandle _ph);
 
     void SetFrameBuffer(
         FrameBufferHandle _fbh);
@@ -645,8 +655,8 @@ public:
 
     void Submit(
         StorageBufferHandle _indirectSbh,
-        uint32_t            _offset   = 0,
-        uint32_t            _numDraws = kWholeSize);
+        uint32_t            _offset         = 0,
+        uint32_t            _numDrawsOrZero = 0);
 
     void Dispatch(
         uint32_t _numGroupsX,
@@ -658,10 +668,18 @@ public:
         uint32_t            _offset = 0);
 
 private:
+    // ===========================================
+    //  Init
+    // ===========================================
+
     void InitDevice_(bool _bEnableDebugLayer);
     void InitDebugInterfacesIfNeed_();
     void InitTimerQueries_();
     void CleanUpTimerQueries_();
+
+    // ===========================================
+    //  Buffer
+    // ===========================================
 
     [[nodiscard]] VertexBufferD3D11 CreateVertexBuffer_(
         uint32_t            _numElems,
@@ -669,9 +687,9 @@ private:
         bool                _bDynamic,
         MemoryView          _initDataOrEmpty);
 
-    [[nodiscard]] VertexBufferD3D11 CreateInstanceBuffer_(
-        uint32_t   _numInstances,
-        uint32_t   _stride) const;
+    [[nodiscard]] InstanceBufferD3D11 CreateInstanceBuffer_(
+        uint32_t _numElems,
+        uint32_t _stride) const;
 
     [[nodiscard]] IndexBufferD3D11 CreateIndexBuffer_(
         uint32_t   _numElems,
@@ -695,76 +713,56 @@ private:
     [[nodiscard]] StorageBufferD3D11 CreateReadbackBuffer_(
         uint32_t _byteWidth) const;
 
-    [[nodiscard]] VertexLayoutHandle GetOrAllocVertexLayoutHandle_(
+    [[nodiscard]] VertexLayoutHandle GetOrCreateVertexLayoutHandle_(
         const VertexLayout& _vl);
 
-    // ===========================================
-    //  Resource Lookup / Unbind
-    // ===========================================
+    void ReleaseVertexLayout_(
+        VertexLayoutHandle _vlh);
 
-    [[nodiscard]] FrameBufferHandle ResolveFrameBufferHandle_(FrameBufferHandle _fbh) const;
-    void                            ResolveFrameBuffer_(FrameBufferHandle _fbh);
-
-    [[nodiscard]] ID3D11Buffer* GetD3d11Buffer_(AnyBufferHandle _abh) const;
-    [[nodiscard]] uint32_t      GetBufferByteWidth_(AnyBufferHandle _bh) const;
-    [[nodiscard]] bool          IsDynamicBuffer_(AnyBufferHandle _bh) const;
-
-    void UnbindResource_(Resource _resource);
-    void UnbindConstantBuffer_(ConstantBufferHandle _cbh);
-    void UnbindVertexBuffer_(VertexBufferHandle _vbh);
-    void UnbindIndexBuffer_(IndexBufferHandle _ibh);
-    void UnbindFrameBuffer_(FrameBufferHandle _fbh);
+    [[nodiscard]] ResolveBufferRefResult ResolveBufferRef_(
+        BufferRef _buffer);
 
     // ===========================================
-    //  Texture Create Helper
+    //  Texture
     // ===========================================
 
-    // [AI] BufferCreateParam / TextureCreateParam / SwapChainDesc 는 어디에도 정의가 없었고 쓰지 않기로 해서 걷어냈다.
-    //      버퍼 생성은 이미 CreateXxxBuffer_ 들이 직접 처리하므로 CreateD3d11Buffer_ / CreateStorageViews_ 도 함께 제거.
-    //      텍스처 쪽은 TextureDesc 를 그대로 파라미터로 쓴다. TextureD3D11 이 어차피 이걸 상속한다.
-    [[nodiscard]] Vector<D3D11_SUBRESOURCE_DATA> MakeInitData_(const TextureDesc& _desc, Span<const MemoryView> _initData) const;
+    [[nodiscard]] DXGI_SAMPLE_DESC MakeSampleDesc_(
+        DXGI_FORMAT _format,
+        eMSAA       _msaa) const;
 
-    void                        CreateTextureViews_(TextureD3D11& _texture);
-    [[nodiscard]] TextureHandle CreateTextureInternal_(const TextureDesc& _desc, Span<const MemoryView> _initDataOrEmpty);
-    void                        UpdateTextureInternal_(TextureHandle _texh, uint32_t _mip, uint32_t _layer, uint32_t _x, uint32_t _y, uint32_t _z, uint32_t _widthOrAll, uint32_t _heightOrAll, uint32_t _depthOrAll, MemoryView _data, uint32_t _rowPitch, uint32_t _depthPitch);
+    [[nodiscard]] TextureD3D11 CreateTexture_(
+        uint32_t               _width,
+        uint32_t               _height,
+        uint32_t               _depth,
+        eTexture               _type,
+        eTextureFormat         _format,
+        uint32_t               _numLayers,
+        eMSAA                  _msaa,
+        Flags<eTextureOption>  _flags,
+        Span<const MemoryView> _initData) const;
 
-    // ===========================================
-    //  FrameBufferDesc / SwapChain Helper
-    // ===========================================
-
-    // [AI] 실패하면 JUG_DX_CHECK 가 크래시시키므로 bool 반환을 없앴다. (방어적 분기 제거)
-    void                          CreateFrameBufferViews_(FrameBufferD3D11& _frameBuffer);
-    void                          FillAttachments_(FrameBufferD3D11& _frameBuffer, Span<const Attachment> _attachments) const;
-    [[nodiscard]] ID3D11Resource* GetViewTarget_(const TextureD3D11& _texture) const;
-
-    [[nodiscard]] UINT MakeSwapChainFlags_() const;
-
-    // [AI] SwapChainDesc 가 사라져서 백버퍼 크기만 넘긴다. 포맷/MSAA 는 이미 색상 텍스처에 들어 있다.
-    void CreateSwapChainTargets_(FrameBufferD3D11& _frameBuffer, uint32_t _width, uint32_t _height);
-    void ReleaseSwapChainTargets_(FrameBufferD3D11& _frameBuffer);
-    void PresentSwapChain_(FrameBufferD3D11& _frameBuffer);
-
-    // ===========================================
-    //  Shader / Input Layout Helper
-    // ===========================================
-
-    [[nodiscard]] ShaderHandle       FindShaderByHash_(uint64_t _hash) const;
-    [[nodiscard]] ID3D11InputLayout* GetOrCreateD3d11InputLayout_();
+    void UpdateTexture_(
+        TextureHandle _texh,
+        uint32_t      _mip,
+        uint32_t      _layer,
+        uint32_t      _offsetX,
+        uint32_t      _offsetY,
+        uint32_t      _offsetZ,
+        uint32_t      _width,
+        uint32_t      _height,
+        uint32_t      _depth,
+        MemoryView    _data);
 
     // ===========================================
-    //  Pipeline State Helper
+    //  Resources
     // ===========================================
 
-    [[nodiscard]] ID3D11SamplerState*      GetOrCreateSamplerState_(Flags<eSampler> _flags, RGBA _borderColor);
+    [[nodiscard]] ID3D11InputLayout*       GetOrCreateD3d11InputLayout_();
+    [[nodiscard]] ID3D11SamplerState*      GetOrCreateSamplerState_(Flags<eSampler> _flags, RGBA _border);
     [[nodiscard]] ID3D11RasterizerState*   GetOrCreateRasterizerState_();
     [[nodiscard]] ID3D11BlendState*        GetOrCreateBlendState_();
     [[nodiscard]] ID3D11DepthStencilState* GetOrCreateDepthStencilState_();
 
-    [[nodiscard]] Flags<ePipelineDirty> ToSrvDirty_(eShader _shader) const;
-    [[nodiscard]] Flags<ePipelineDirty> ToCBufferDirty_(eShader _shader) const;
-    [[nodiscard]] Flags<ePipelineDirty> ToSamplerDirty_(eShader _shader) const;
-
-    void BindFrameBuffer_();
     void ApplyPipeline_();
 
     // ===========================================
@@ -774,6 +772,7 @@ private:
     ID3D11Device*        m_pD3d11Device        = nullptr;
     ID3D11DeviceContext* m_pD3d11DeviceContext = nullptr;
     D3D_FEATURE_LEVEL    m_d3dFeatureLevel     = D3D_FEATURE_LEVEL_11_0;
+    D3D_DRIVER_TYPE      m_d3dDriverType       = D3D_DRIVER_TYPE_UNKNOWN;
     DXGI                 m_dxgi                = {};
 
     ID3D11Debug*               m_pD3d11DebugOrNull     = nullptr;
@@ -786,7 +785,9 @@ private:
     //  Resource
     // ===========================================
 
+    VertexLayoutPool   m_vertexLayoutPool   = {};
     VertexBufferPool   m_vertexBufferPool   = {};
+    InstanceBufferPool m_instanceBufferPool = {};
     IndexBufferPool    m_indexBufferPool    = {};
     StorageBufferPool  m_storageBufferPool  = {};
     ConstantBufferPool m_constantBufferPool = {};
@@ -794,10 +795,9 @@ private:
     FrameBufferPool    m_frameBufferPool    = {};
     ShaderPool         m_shaderPool         = {};
     ProgramPool        m_programPool        = {};
-    VertexLayoutPool   m_vertexLayoutPool   = {};
 
-    NoopHashMap<uint64_t, VertexLayoutHandle> m_vlhCache = {};
-    NoopHashMap<uint64_t, ShaderHandle>       m_shCache  = {};
+    NoopHashMap<uint64_t, VertexLayoutHandle> m_vlhCache    = {};
+    NoopHashMap<uint64_t, ShaderHandle>       m_shaderCache = {};
 
     NoopHashMap<uint64_t, ID3D11InputLayout*>       m_d3d11InputLayoutCache       = {};
     NoopHashMap<uint64_t, ID3D11BlendState*>        m_d3d11BlendStateCache        = {};
@@ -805,19 +805,24 @@ private:
     NoopHashMap<uint64_t, ID3D11DepthStencilState*> m_d3d11DepthStencilStateCache = {};
     NoopHashMap<uint64_t, ID3D11SamplerState*>      m_d3d11SamplerStateCache      = {};
 
+    Vector<FrameBufferHandle> m_swapChainFbhs = {};
+
+    ID3D11Buffer* m_pUploadBuffer         = nullptr;
+    uint32_t      m_uploadBufferByteWidth = 0;
+
     // ===========================================
     //  Pipeline State
     // ===========================================
 
     Flags<ePipelineDirty> m_dirtyFlags = kAllFlag;
 
-    ARRAY<ID3D11Buffer*, kNumMaxVertexSlots>      m_d3d11VertexBuffers = {};
-    ARRAY<VertexBufferHandle, kNumMaxVertexSlots> m_vbhs               = {};
-    ARRAY<VertexLayoutHandle, kNumMaxVertexSlots> m_vlhs               = {};
-    ARRAY<uint32_t, kNumMaxVertexSlots>           m_vertexStrides      = {};
-    ARRAY<uint32_t, kNumMaxVertexSlots>           m_vertexOffsets      = {};
-    uint32_t                                      m_numVertexBuffers   = 0;
-    uint32_t                                      m_numVertices        = 0;
+    ARRAY<ID3D11Buffer*, kNumMaxStreams>      m_d3d11VertexBuffers = {};
+    ARRAY<VertexBufferHandle, kNumMaxStreams> m_vbhs               = {};
+    ARRAY<VertexLayoutHandle, kNumMaxStreams> m_vlhs               = {};
+    ARRAY<uint32_t, kNumMaxStreams>           m_vertexStrides      = {};
+    ARRAY<uint32_t, kNumMaxStreams>           m_vertexOffsets      = {};
+    uint32_t                                  m_numStreams         = 0;
+    uint32_t                                  m_numVertices        = 0;
 
     ID3D11Buffer*     m_pD3d11IndexBuffer = nullptr;
     DXGI_FORMAT       m_dxgiIndexFormat   = DXGI_FORMAT_UNKNOWN;
@@ -825,13 +830,11 @@ private:
     uint32_t          m_numIndices        = 0;
     IndexBufferHandle m_ibh               = kNullHandle;
 
-    ID3D11Buffer*      m_pD3d11InstanceBuffer = nullptr;
-    uint32_t           m_instanceStride       = 0;
-    uint32_t           m_instanceOffset       = 0;
-    VertexBufferHandle m_instanceVbh          = kNullHandle;
-    uint32_t           m_numInstances         = 0;
-
-    ID3D11InputLayout* m_pD3d11InputLayout = nullptr;
+    ID3D11Buffer*        m_pD3d11InstanceBuffer = nullptr;
+    uint32_t             m_instanceDataStride   = 0;
+    uint32_t             m_instanceOffset       = 0;
+    InstanceBufferHandle m_instbh               = kNullHandle;
+    uint32_t             m_numInstances         = 0;
 
     ENUM_ARRAY<eShader, ReadBind>        m_readBind      = {};
     ENUM_ARRAY<eShader, CBufferBind>     m_cbufferBind   = {};
@@ -839,7 +842,7 @@ private:
     ENUM_ARRAY<eShaderRW, ReadWriteBind> m_readWriteBind = {};
 
     FrameBufferHandle m_fbh     = kNullHandle;
-    FrameBufferHandle m_lastFbh = kNullHandle;
+    FrameBufferHandle m_lastFbh = kNullHandle;   // for resolve
 
     float m_viewportX = 0.f;
     float m_viewportY = 0.f;
@@ -865,20 +868,19 @@ private:
     GraphicsStats m_stats     = {};
     GraphicsStats m_lastStats = {};
 
-    static constexpr size_t kNumInitTimerQueries = 16;
+    uint64_t m_frameIndex = 0;
+
+    static constexpr size_t kNumInitTimerQueries = 8;
     RingBuffer<TimerQuery>  m_timerQueries { kNumInitTimerQueries };
 };
 
-template<typename H, typename F>
-void DestroyAndNull(
-    H& _handle,
-    F  _destroy)
-{
-    if (_handle)
-    {
-        _destroy(_handle);
-        _handle = kNullHandle;
-    }
-}
-
 }   // namespace jug
+
+#define JUG_GFX_DESTROY(_handle)                        \
+    JUG_BEGIN_MACRO_BLOCK                               \
+    if (_handle != jug::kNullHandle)                    \
+    {                                                   \
+        jug::Graphics::GetInstance()->Destroy(_handle); \
+        _handle = jug::kNullHandle;                     \
+    }                                                   \
+    JUG_END_MACRO_BLOCK

@@ -66,12 +66,12 @@ uint32_t VertexLayout::GetStride() const
     return m_stride;
 }
 
-size_t VertexLayout::GetNumAttribs() const
+size_t VertexLayout::GetNumAttributes() const
 {
     return m_numAttribs;
 }
 
-Span<const VertexAttribute> VertexLayout::GetAttributs() const
+Span<const VertexAttribute> VertexLayout::GetAttributes() const
 {
     return Span<const VertexAttribute> { m_attribs.data(), m_numAttribs };
 }

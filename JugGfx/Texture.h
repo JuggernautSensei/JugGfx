@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <JugX/Vector3I.h>
 
 namespace jug
 {
@@ -69,13 +68,21 @@ enum class eTextureFormat
     D32_Float_S8_UInt,
 };
 
+struct CalcTextureSizeResult
+{
+    uint32_t width  = 0;
+    uint32_t height = 0;
+    uint32_t depth  = 0;
+};
+
 [[nodiscard]] bool           IsDepthFormat(eTextureFormat _format);
 [[nodiscard]] bool           IsSRGB(eTextureFormat _format);
+[[nodiscard]] eTextureFormat ToNonSRGB(eTextureFormat _format);
 [[nodiscard]] eTextureFormat ToSrgbOrUnknown(eTextureFormat _format);
-[[nodiscard]] int            GetBitPerPixel(eTextureFormat _format);
+[[nodiscard]] uint32_t       GetBitPerPixel(eTextureFormat _format);
 
-[[nodiscard]] int      CalcNumMips(int _width, int _height, int _depth);
-[[nodiscard]] VECTOR3I CalcTextureSize(int _width, int _height, int _depth, int _mip);
-[[nodiscard]] int      CalcTextureIndex(int _mip, int _layer, int _numMips);
+[[nodiscard]] uint32_t              CalcNumMips(uint32_t _width, uint32_t _height, uint32_t _depth);
+[[nodiscard]] CalcTextureSizeResult CalcTextureSize(uint32_t _width, uint32_t _height, uint32_t _depth, uint32_t _mip);
+[[nodiscard]] uint32_t              CalcTextureIndex(uint32_t _mip, uint32_t _layer, uint32_t _numMips);
 
 }   // namespace jug

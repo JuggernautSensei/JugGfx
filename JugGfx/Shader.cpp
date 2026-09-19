@@ -129,19 +129,23 @@ Error Shader::CompileFromSource_(
 {
     // make d3d macro array
     const bool   bNeedNullTerm = !_desc.macros.empty() && !_desc.macros.back().IsNull();
-    const size_t numMacros     = _desc.macros.size() + (bNeedNullTerm ? 1 : 0);
+    const size_t numMacros     = _desc.macros.empty() ? 0 : _desc.macros.size() + (bNeedNullTerm ? 1 : 0);
 
-    D3D_SHADER_MACRO* pMacro = static_cast<D3D_SHADER_MACRO*>(JUG_STACK_ALLOC(numMacros));
-    for (size_t i = 0; i < _desc.macros.size(); ++i)
+    D3D_SHADER_MACRO* pMacro = nullptr;
+    if (numMacros > 0)
     {
-        pMacro[i].Name       = _desc.macros[i].name.data();
-        pMacro[i].Definition = _desc.macros[i].value.data();
-    }
+        pMacro = static_cast<D3D_SHADER_MACRO*>(JUG_STACK_ALLOC(sizeof(D3D_SHADER_MACRO) * numMacros));
+        for (size_t i = 0; i < _desc.macros.size(); ++i)
+        {
+            pMacro[i].Name       = _desc.macros[i].name.data();
+            pMacro[i].Definition = _desc.macros[i].value.data();
+        }
 
-    if (bNeedNullTerm)
-    {
-        pMacro[numMacros - 1].Name       = nullptr;
-        pMacro[numMacros - 1].Definition = nullptr;
+        if (bNeedNullTerm)
+        {
+            pMacro[numMacros - 1].Name       = nullptr;
+            pMacro[numMacros - 1].Definition = nullptr;
+        }
     }
 
     // make flag

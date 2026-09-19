@@ -31,21 +31,9 @@ namespace
         return static_cast<uint32_t>((_state & _mask).GetFlags()) >> _shift;
     }
 
-    constexpr uint32_t kTopologyShift  = 0;
-    constexpr uint32_t kCullModeShift  = 4;
-    constexpr uint32_t kDepthTestShift = 17;
-
     constexpr Flags<eRenderState> kTopologyMask { MakeFieldMask_(eRenderState::Topology_TriangleStrip, eRenderState::Topology_PointList) };
     constexpr Flags<eRenderState> kCullModeMask { MakeFieldMask_(eRenderState::Cull_Front, eRenderState::Cull_Back) };
     constexpr Flags<eRenderState> kDepthTestMask { MakeFieldMask_(eRenderState::DepthTest_Less, eRenderState::DepthTest_Never) };
-
-    constexpr uint32_t kSrcShift       = 1;
-    constexpr uint32_t kDstShift       = 5;
-    constexpr uint32_t kOpShift        = 9;
-    constexpr uint32_t kSrcAlphaShift  = 12;
-    constexpr uint32_t kDstAlphaShift  = 16;
-    constexpr uint32_t kOpAlphaShift   = 20;
-    constexpr uint32_t kWriteMaskShift = 23;
 
     constexpr Flags<eBlend> kSrcMask { MakeFieldMask_(eBlend::Src_One, eBlend::Src_InvBlendFactor) };
     constexpr Flags<eBlend> kDstMask { MakeFieldMask_(eBlend::Dst_One, eBlend::Dst_InvBlendFactor) };
@@ -53,24 +41,11 @@ namespace
     constexpr Flags<eBlend> kSrcAlphaMask { MakeFieldMask_(eBlend::SrcAlpha_One, eBlend::SrcAlpha_InvBlendFactor) };
     constexpr Flags<eBlend> kDstAlphaMask { MakeFieldMask_(eBlend::DstAlpha_One, eBlend::DstAlpha_InvBlendFactor) };
     constexpr Flags<eBlend> kOpAlphaMask { MakeFieldMask_(eBlend::OpAlpha_Subtract, eBlend::OpAlpha_Max) };
-    constexpr Flags<eBlend> kWriteMaskMask { MakeFieldMask_(eBlend::Write_R, eBlend::Write_A) };
-
-    constexpr uint32_t kStencilFailDepthPassShift = 0;
-    constexpr uint32_t kStencilPassDepthFailShift = 3;
-    constexpr uint32_t kStencilFailDepthFailShift = 6;
-    constexpr uint32_t kStencilCompareShift       = 9;
 
     constexpr Flags<eStencil> kStencilFailDepthPassMask { MakeFieldMask_(eStencil::StencilFail_DepthPass_Zero, eStencil::StencilFail_DepthPass_Decr) };
     constexpr Flags<eStencil> kStencilPassDepthFailMask { MakeFieldMask_(eStencil::StencilPass_DepthFail_Zero, eStencil::StencilPass_DepthFail_Decr) };
-    // [AI] eStencil 에 StencilFail_DepthFail_* 은 없다. shift 6 자리의 실제 이름은 StencilPass_DepthPass_* 다.
     constexpr Flags<eStencil> kStencilFailDepthFailMask { MakeFieldMask_(eStencil::StencilPass_DepthPass_Zero, eStencil::StencilPass_DepthPass_Decr) };
     constexpr Flags<eStencil> kStencilCompareMask { MakeFieldMask_(eStencil::Compare_Less, eStencil::Compare_Never) };
-
-    constexpr uint32_t kFilterShift         = 0;
-    constexpr uint32_t kUShift              = 4;
-    constexpr uint32_t kVShift              = 7;
-    constexpr uint32_t kWShift              = 10;
-    constexpr uint32_t kSamplerCompareShift = 13;
 
     constexpr Flags<eSampler> kFilterMask { MakeFieldMask_(eSampler::Filter_MinPoint_MagPoint_MipLinear, eSampler::Filter_Anisotropic16) };
     constexpr Flags<eSampler> kUMask { MakeFieldMask_(eSampler::U_Mirror, eSampler::U_MirrorOnce) };
@@ -203,84 +178,95 @@ Flags<eSampler> FilterCompare(
     return _flags & kSamplerCompareMask;
 }
 
-AnyBufferHandle::AnyBufferHandle()
+// ===========================================
+//  Buffer Ref
+// ===========================================
+
+BufferRef::BufferRef()
     : m_vbh(kNullHandle)
     , m_type(eBuffer::Vertex)
 {
 }
 
-AnyBufferHandle::AnyBufferHandle(
-    const NullHandleType)
-    : m_vbh(kNullHandle)
-    , m_type(eBuffer::Vertex)
-{
-}
-
-AnyBufferHandle::AnyBufferHandle(
+BufferRef::BufferRef(
     const VertexBufferHandle _vbh)
     : m_vbh(_vbh)
     , m_type(eBuffer::Vertex)
 {
 }
 
-AnyBufferHandle::AnyBufferHandle(
+BufferRef::BufferRef(
+    const InstanceBufferHandle _instbh)
+    : m_instbh(_instbh)
+    , m_type(eBuffer::Instance)
+{
+}
+
+BufferRef::BufferRef(
     const IndexBufferHandle _ibh)
     : m_ibh(_ibh)
     , m_type(eBuffer::Index)
 {
 }
 
-AnyBufferHandle::AnyBufferHandle(
-    const StorageBufferHandle _sbh)
-    : m_sbh(_sbh)
-    , m_type(eBuffer::Storage)
-{
-}
-
-AnyBufferHandle::AnyBufferHandle(
+BufferRef::BufferRef(
     const ConstantBufferHandle _cbh)
     : m_cbh(_cbh)
     , m_type(eBuffer::Constant)
 {
 }
 
-bool AnyBufferHandle::IsNull() const
+BufferRef::BufferRef(
+    const StorageBufferHandle _sbh)
+    : m_sbh(_sbh)
+    , m_type(eBuffer::Storage)
 {
-    return m_vbh == kNullHandle;
 }
 
-AnyBufferHandle::operator bool() const
-{
-    return !IsNull();
-}
-
-eBuffer AnyBufferHandle::GetType() const
+eBuffer BufferRef::GetType() const
 {
     return m_type;
 }
 
-VertexBufferHandle AnyBufferHandle::GetVertexBufferHandle() const
+bool BufferRef::IsNull() const
 {
-    JUG_ASSERT(m_type == eBuffer::Vertex, "AnyBufferHandle is not a VertexBufferHandle");
+    // 모든 핸들이 같은 레이아웃이라 어느 멤버로 봐도 결과가 같다.
+    return m_vbh.IsNull();
+}
+
+BufferRef::operator bool() const
+{
+    return !IsNull();
+}
+
+VertexBufferHandle BufferRef::GetVertexBufferHandle() const
+{
+    JUG_ASSERT(m_type == eBuffer::Vertex, "The buffer is not a vertex buffer.\n");
     return m_vbh;
 }
 
-IndexBufferHandle AnyBufferHandle::GetIndexBufferHandle() const
+InstanceBufferHandle BufferRef::GetInstanceBufferHandle() const
 {
-    JUG_ASSERT(m_type == eBuffer::Index, "AnyBufferHandle is not a IndexBufferHandle");
+    JUG_ASSERT(m_type == eBuffer::Instance, "The buffer is not an instance buffer.\n");
+    return m_instbh;
+}
+
+IndexBufferHandle BufferRef::GetIndexBufferHandle() const
+{
+    JUG_ASSERT(m_type == eBuffer::Index, "The buffer is not an index buffer.\n");
     return m_ibh;
 }
 
-StorageBufferHandle AnyBufferHandle::GetStorageBufferHandle() const
+ConstantBufferHandle BufferRef::GetConstantBufferHandle() const
 {
-    JUG_ASSERT(m_type == eBuffer::Storage, "AnyBufferHandle is not a StorageBufferHandle");
-    return m_sbh;
+    JUG_ASSERT(m_type == eBuffer::Constant, "The buffer is not a constant buffer.\n");
+    return m_cbh;
 }
 
-ConstantBufferHandle AnyBufferHandle::GetConstantBufferHandle() const
+StorageBufferHandle BufferRef::GetStorageBufferHandle() const
 {
-    JUG_ASSERT(m_type == eBuffer::Constant, "AnyBufferHandle is not a ConstantBufferHandle");
-    return m_cbh;
+    JUG_ASSERT(m_type == eBuffer::Storage, "The buffer is not a storage buffer.\n");
+    return m_sbh;
 }
 
 }   // namespace jug

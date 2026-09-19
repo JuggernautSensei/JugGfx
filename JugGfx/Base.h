@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <JugX/EnumFlags.h>
 #include <JugX/Handle.h>
+#include <JugX/MemoryView.h>
 
 #include "Texture.h"
 #include "VertexLayout.h"
@@ -13,16 +14,16 @@ namespace jug
 // ===========================================
 
 // Limits
-constexpr size_t kNumMaxRenderTargetSlots = 8;
-constexpr size_t kNumMaxAttachmentSlots   = kNumMaxRenderTargetSlots + 1;
-constexpr size_t kNumMaxSamplerSlots      = 16;
-constexpr size_t kNumMaxReadSlots         = 16;
-constexpr size_t kNumMaxReadWriteSlots    = 16;
-constexpr size_t kNumMaxCBufferSlots      = 14;
-constexpr size_t kNumMaxVertexSlots       = 4;
+constexpr uint32_t kNumMaxRenderTargetSlots = 8;
+constexpr uint32_t kNumMaxAttachmentSlots   = kNumMaxRenderTargetSlots + 1;
+constexpr uint32_t kNumMaxSamplerSlots      = 16;
+constexpr uint32_t kNumMaxReadSlots         = 16;
+constexpr uint32_t kNumMaxReadWriteSlots    = 16;
+constexpr uint32_t kNumMaxCBufferSlots      = 14;
+constexpr uint32_t kNumMaxStreams           = 4;
 
-// Sentinel
-constexpr uint32_t kWholeSize = Max<uint32_t>();
+constexpr uint32_t kCBufferSizeAlign      = 16;
+constexpr uint32_t kInstanceDataSizeAlign = 16;
 
 // ===========================================
 //  Enums
@@ -40,6 +41,9 @@ enum class eTextureOption : uint32_t
     Readback        = 1 << 2,   // can be read by CPU.
     ShaderWriteOnly = 1 << 3,   // can not be read by shader.
     ShaderReadWrite = 1 << 4,   // can be read and written by shader.
+
+    // misc
+    HasMips = 1 << 5,   // alloc mips storage. (w x h x d) ~ (1 x 1 x 1)
 };
 
 enum class eMSAA
@@ -55,9 +59,9 @@ enum class eStorageBufferOption : uint32_t
 {
     None = 0,
 
-    Dynamic         = 1 << 0,   // can be written by CPU.
-    ShaderRead      = 1 << 1,   // can be read by shader.
-    ShaderReadWrite = 1 << 2,   // can be read and written by shader.
+    ShaderRead      = 1 << 0,   // can be read by shader.
+    ShaderReadWrite = 1 << 1,   // can be read and written by shader.
+    Dynamic         = 1 << 2,   // can be updated by CPU.
 };
 
 enum class eStorageBuffer
@@ -74,6 +78,12 @@ enum class eShader
     Compute,
 };
 
+enum class eShaderRW
+{
+    Pixel,
+    Compute
+};
+
 enum class eTexture
 {
     Texture2D,
@@ -84,6 +94,7 @@ enum class eTexture
 enum class eBuffer
 {
     Vertex,
+    Instance,   
     Index,
     Storage,
     Constant,
@@ -350,6 +361,7 @@ enum class eSampler : uint32_t
 // ===========================================
 
 struct VertexBufferDesc;
+struct InstanceBufferDesc;
 struct IndexBufferDesc;
 struct StorageBufferDesc;
 struct ConstantBufferDesc;
@@ -360,6 +372,7 @@ struct ProgramDesc;
 
 using VertexLayoutHandle   = Handle<VertexLayout>;
 using VertexBufferHandle   = Handle<VertexBufferDesc>;
+using InstanceBufferHandle = Handle<InstanceBufferDesc>;
 using IndexBufferHandle    = Handle<IndexBufferDesc>;
 using StorageBufferHandle  = Handle<StorageBufferDesc>;
 using ConstantBufferHandle = Handle<ConstantBufferDesc>;
@@ -372,19 +385,34 @@ using ProgramHandle        = Handle<ProgramDesc>;
 //  Resource
 // ===========================================
 
+struct VertexLayoutDesc
+{
+    VertexLayout vl       = {};
+    uint32_t     refCount = 0;
+};
+
 struct VertexBufferDesc
 {
-    uint32_t           byteWidth = 0;
-    uint32_t           stride    = 0;
-    VertexLayoutHandle vlh       = kNullHandle;
-    bool               bDynamic  = false;
+    uint32_t           byteWidth   = 0;
+    uint32_t           stride      = 0;
+    uint32_t           numVertices = 0;
+    VertexLayoutHandle vlh         = kNullHandle;
+    bool               bDynamic    = false;
+};
+
+struct InstanceBufferDesc
+{
+    uint32_t byteWidth    = 0;
+    uint32_t stride       = 0;
+    uint32_t numInstances = 0;
 };
 
 struct IndexBufferDesc
 {
-    uint32_t byteWidth = 0;
-    bool     bU32      = false;
-    bool     bDynamic  = false;
+    uint32_t byteWidth  = 0;
+    uint32_t numIndices = 0;
+    bool     bU32       = false;
+    bool     bDynamic   = false;
 };
 
 struct StorageBufferDesc
@@ -425,11 +453,25 @@ struct Attachment
 
 struct FrameBufferDesc
 {
-    ARRAY<Attachment, kNumMaxAttachmentSlots> attachments      = {};
-    uint32_t                                  numRts           = 0;
-    bool                                      bHasDepthStencil = false;
-    bool                                      bMSAA            = false;
-    void*                                     pWindow          = nullptr;
+    [[nodiscard]] uint32_t GetNumAttachments() const
+    {
+        return numRts + (bHasDepth ? 1 : 0);
+    }
+
+    [[nodiscard]] Attachment GetDepthAttachment() const
+    {
+        return atts[numRts];
+    }
+
+    ARRAY<Attachment, kNumMaxAttachmentSlots> atts      = {};
+    uint32_t                                  numRts    = 0;
+    bool                                      bHasDepth = false;
+    bool                                      bMSAA     = false;
+
+    // swap chain
+    void*    pWindow    = nullptr;
+    uint32_t numBuffers = 0;
+    bool     bVSync     = false;
 };
 
 struct ShaderDesc
@@ -441,45 +483,48 @@ struct ShaderDesc
 
 struct ProgramDesc
 {
-    ShaderHandle vsh  = kNullHandle;
-    ShaderHandle psh  = kNullHandle;
-    ShaderHandle csh  = kNullHandle;
-    uint64_t     hash = 0;
+    ShaderHandle vsh = kNullHandle;
+    ShaderHandle psh = kNullHandle;
+    ShaderHandle csh = kNullHandle;
 };
 
 // ===========================================
-//  Struct
+//  Misc
 // ===========================================
 
-class AnyBufferHandle
+class BufferRef
 {
 public:
-    AnyBufferHandle();
-    /* implicit */ AnyBufferHandle(NullHandleType);
-    /* implicit */ AnyBufferHandle(VertexBufferHandle _vbh);
-    /* implicit */ AnyBufferHandle(IndexBufferHandle _ibh);
-    /* implicit */ AnyBufferHandle(StorageBufferHandle _sbh);
-    /* implicit */ AnyBufferHandle(ConstantBufferHandle _cbh);
+    BufferRef();
+    /* implicit */ BufferRef(VertexBufferHandle _vbh);
+    /* implicit */ BufferRef(InstanceBufferHandle _instbh); 
+    /* implicit */ BufferRef(IndexBufferHandle _ibh);
+    /* implicit */ BufferRef(ConstantBufferHandle _cbh);
+    /* implicit */ BufferRef(StorageBufferHandle _sbh);
 
-    [[nodiscard]] bool IsNull() const;
-    explicit           operator bool() const;
+    [[nodiscard]] eBuffer GetType() const;
+    [[nodiscard]] bool    IsNull() const;
 
-    [[nodiscard]] eBuffer              GetType() const;
+    explicit operator bool() const;
+
     [[nodiscard]] VertexBufferHandle   GetVertexBufferHandle() const;
+    [[nodiscard]] InstanceBufferHandle GetInstanceBufferHandle() const; 
     [[nodiscard]] IndexBufferHandle    GetIndexBufferHandle() const;
-    [[nodiscard]] StorageBufferHandle  GetStorageBufferHandle() const;
     [[nodiscard]] ConstantBufferHandle GetConstantBufferHandle() const;
+    [[nodiscard]] StorageBufferHandle  GetStorageBufferHandle() const;
 
 private:
     JUG_DISABLE_ANON_WARNING_BEGIN
     union
     {
-        VertexBufferHandle   m_vbh = kNullHandle;
+        VertexBufferHandle   m_vbh;
+        InstanceBufferHandle m_instbh;   
         IndexBufferHandle    m_ibh;
-        StorageBufferHandle  m_sbh;
         ConstantBufferHandle m_cbh;
+        StorageBufferHandle  m_sbh;
     };
     JUG_DISABLE_ANON_WARNING_END
+
     eBuffer m_type = eBuffer::Vertex;
 };
 
@@ -489,22 +534,15 @@ struct VertexStream
     uint32_t           offset = 0;   // 버텍스 단위 오프셋
 };
 
-struct Subresource
-{
-    TextureHandle texh  = kNullHandle;
-    uint32_t      mip   = 0;
-    uint32_t      layer = 0;
-};
-
 struct GraphicsCaps
 {
     uint32_t vendorID = 0;
     uint32_t deviceID = 0;
 
     // memory
-    uint64_t videoMemory        = 0;   // byte
-    uint64_t systemMemory       = 0;   // byte
-    uint64_t sharedSystemMemory = 0;   // byte
+    uint64_t videoMemorySize        = 0;   // byte
+    uint64_t systemMemorySize       = 0;   // byte
+    uint64_t sharedSystemMemorySize = 0;   // byte
 
     bool bAllowTearing       = false;
     bool bDebugLayerEnabled  = false;
@@ -517,12 +555,13 @@ struct GraphicsStats
     int numDispatchCalls = 0;
     int numResolves      = 0;
 
-    int64_t gpuTimerBegin = 0;
-    int64_t gpuTimerEnd   = 0;
-    int64_t gpuTimerFreq  = 0;
+    uint64_t gpuTimerBegin   = 0;
+    uint64_t gpuTimerEnd     = 0;
+    uint64_t gpuTimerFreq    = 0;
+    uint64_t gpuTimerLatency = 0;   // frame
 
-    int64_t gpuMemoryUsage = 0;   // byte
-    int64_t gpuMaxMemory   = 0;   // byte
+    uint64_t gpuMemoryUsed = 0;   // byte
+    uint64_t gpuMemorySize = 0;   // byte
 };
 
 }   // namespace jug

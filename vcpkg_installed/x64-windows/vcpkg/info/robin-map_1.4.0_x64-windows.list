@@ -1,0 +1,17 @@
+x64-windows/
+x64-windows/include/
+x64-windows/include/tsl/
+x64-windows/include/tsl/robin_growth_policy.h
+x64-windows/include/tsl/robin_hash.h
+x64-windows/include/tsl/robin_map.h
+x64-windows/include/tsl/robin_set.h
+x64-windows/share/
+x64-windows/share/robin-map/
+x64-windows/share/robin-map/copyright
+x64-windows/share/robin-map/vcpkg.spdx.json
+x64-windows/share/robin-map/vcpkg_abi_info.txt
+x64-windows/share/tsl-robin-map.natvis
+x64-windows/share/tsl-robin-map/
+x64-windows/share/tsl-robin-map/tsl-robin-mapConfig.cmake
+x64-windows/share/tsl-robin-map/tsl-robin-mapConfigVersion.cmake
+x64-windows/share/tsl-robin-map/tsl-robin-mapTargets.cmake

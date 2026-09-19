@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "jugx",
+  "version-semver": "0.1.0",
+  "description": "JugX utility library",
+  "homepage": "https://github.com/JuggernautSensei/JugX",
+  "dependencies": [
+    "sdl3",
+    "parallel-hashmap",
+    "utfcpp",
+    "yyjson",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

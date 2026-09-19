@@ -1,0 +1,17 @@
+x64-windows/
+x64-windows/debug/
+x64-windows/debug/lib/
+x64-windows/debug/lib/pystring.lib
+x64-windows/include/
+x64-windows/include/pystring/
+x64-windows/include/pystring/pystring.h
+x64-windows/lib/
+x64-windows/lib/pystring.lib
+x64-windows/share/
+x64-windows/share/pystring/
+x64-windows/share/pystring/copyright
+x64-windows/share/pystring/pystring-config-debug.cmake
+x64-windows/share/pystring/pystring-config-release.cmake
+x64-windows/share/pystring/pystring-config.cmake
+x64-windows/share/pystring/vcpkg.spdx.json
+x64-windows/share/pystring/vcpkg_abi_info.txt

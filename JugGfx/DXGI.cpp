@@ -196,7 +196,7 @@ DXGI& DXGI::operator=(
 
 ISwapChain* DXGI::CreateSwapChain(
     IUnknown*                    _pDevice,
-    void*                        _pWindow,
+    const HWND                   _hWnd,
     const bool                   _bWindowed,
     const DXGI_SWAP_CHAIN_DESC1& _desc) const
 {
@@ -208,7 +208,7 @@ ISwapChain* DXGI::CreateSwapChain(
     scfd.Windowed                = _bWindowed;
 
     ISwapChain* pSwapChain;
-    JUG_DX_CHECK(m_pFactory->CreateSwapChainForHwnd(_pDevice, static_cast<HWND>(_pWindow), &_desc, &scfd, nullptr, reinterpret_cast<IDXGISwapChain1**>(&pSwapChain)));
+    JUG_DX_CHECK(m_pFactory->CreateSwapChainForHwnd(_pDevice, _hWnd, &_desc, &scfd, nullptr, reinterpret_cast<IDXGISwapChain1**>(&pSwapChain)));
     return pSwapChain;
 }
 

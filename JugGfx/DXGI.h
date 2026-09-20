@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <JugX/OS.h>
-
 #include "Base.h"
 
 namespace jug
@@ -22,7 +20,7 @@ public:
     DXGI(DXGI&& _other) noexcept;
     DXGI& operator=(DXGI&& _other) noexcept;
 
-    ISwapChain* CreateSwapChain(IUnknown* _pDevice, void* _pWindow, bool _bWindowed, const DXGI_SWAP_CHAIN_DESC1& _desc) const;
+    ISwapChain* CreateSwapChain(IUnknown* _pDevice, HWND _hWnd, bool _bWindowed, const DXGI_SWAP_CHAIN_DESC1& _desc) const;
     void        FillCaps(GraphicsCaps& _inoutCaps) const;
 
     [[nodiscard]] IAdapter* GetAdapterOrNull() const;

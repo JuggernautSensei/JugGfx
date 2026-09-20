@@ -11,17 +11,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\JugX\JugX.vcxproj">
+    <ProjectReference Include="Source\Vendor\JugX\JugX.vcxproj">
       <Project>{71c0cb85-1218-4140-95ff-caca4f615774}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="JugGfx\DXGI.h" />
     <ClInclude Include="JugGfx\DxUtils.h" />
-    <ClInclude Include="JugGfx\Graphics.h" />
+    <ClInclude Include="JugGfx\RenderDevice.h" />
     <ClInclude Include="JugGfx\Base.h" />
     <ClInclude Include="JugGfx\Error.h" />
-    <ClInclude Include="JugGfx\API.h" />
+    <ClInclude Include="JugGfx\Graphics.h" />
     <ClInclude Include="JugGfx\Image.h" />
     <ClInclude Include="JugGfx\Shader.h" />
     <ClInclude Include="JugGfx\Texture.h" />
@@ -31,10 +31,10 @@
   <ItemGroup>
     <ClCompile Include="JugGfx\DXGI.cpp" />
     <ClCompile Include="JugGfx\DxUtils.cpp" />
-    <ClCompile Include="JugGfx\Graphics.cpp" />
+    <ClCompile Include="JugGfx\RenderDevice.cpp" />
     <ClCompile Include="JugGfx\Base.cpp" />
     <ClCompile Include="JugGfx\Error.cpp" />
-    <ClCompile Include="JugGfx\API.cpp" />
+    <ClCompile Include="JugGfx\Graphics.cpp" />
     <ClCompile Include="JugGfx\Image.cpp" />
     <ClCompile Include="JugGfx\Shader.cpp" />
     <ClCompile Include="JugGfx\Texture.cpp" />
@@ -78,10 +78,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath);$(SolutionDir)..\JugX\</IncludePath>
+    <IncludePath>$(IncludePath);$(SolutionDir)Source\Vendor\JugX\</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(IncludePath);$(SolutionDir)..\JugX\</IncludePath>
+    <IncludePath>$(IncludePath);$(SolutionDir)Source\Vendor\JugX\</IncludePath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>

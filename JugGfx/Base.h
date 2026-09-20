@@ -94,7 +94,7 @@ enum class eTexture
 enum class eBuffer
 {
     Vertex,
-    Instance,   
+    Instance,
     Index,
     Storage,
     Constant,
@@ -469,9 +469,9 @@ struct FrameBufferDesc
     bool                                      bMSAA     = false;
 
     // swap chain
-    void*    pWindow    = nullptr;
-    uint32_t numBuffers = 0;
-    bool     bVSync     = false;
+    SDL_WindowID wndID      = {};
+    uint32_t     numBuffers = 0;
+    bool         bVSync     = false;
 };
 
 struct ShaderDesc
@@ -497,7 +497,7 @@ class BufferRef
 public:
     BufferRef();
     /* implicit */ BufferRef(VertexBufferHandle _vbh);
-    /* implicit */ BufferRef(InstanceBufferHandle _instbh); 
+    /* implicit */ BufferRef(InstanceBufferHandle _instbh);
     /* implicit */ BufferRef(IndexBufferHandle _ibh);
     /* implicit */ BufferRef(ConstantBufferHandle _cbh);
     /* implicit */ BufferRef(StorageBufferHandle _sbh);
@@ -508,7 +508,7 @@ public:
     explicit operator bool() const;
 
     [[nodiscard]] VertexBufferHandle   GetVertexBufferHandle() const;
-    [[nodiscard]] InstanceBufferHandle GetInstanceBufferHandle() const; 
+    [[nodiscard]] InstanceBufferHandle GetInstanceBufferHandle() const;
     [[nodiscard]] IndexBufferHandle    GetIndexBufferHandle() const;
     [[nodiscard]] ConstantBufferHandle GetConstantBufferHandle() const;
     [[nodiscard]] StorageBufferHandle  GetStorageBufferHandle() const;
@@ -518,7 +518,7 @@ private:
     union
     {
         VertexBufferHandle   m_vbh;
-        InstanceBufferHandle m_instbh;   
+        InstanceBufferHandle m_instbh;
         IndexBufferHandle    m_ibh;
         ConstantBufferHandle m_cbh;
         StorageBufferHandle  m_sbh;

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="JugGfx\Graphics.cpp">
+    <ClCompile Include="JugGfx\RenderDevice.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\Shader.cpp">
@@ -25,18 +25,18 @@
     <ClCompile Include="JugGfx\Error.cpp">
       <Filter>Error</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\API.cpp">
-      <Filter>Base</Filter>
-    </ClCompile>
     <ClCompile Include="JugGfx\DXGI.cpp">
-      <Filter>Core\DirectX</Filter>
+      <Filter>Core\DX</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\DxUtils.cpp">
-      <Filter>Core\DirectX</Filter>
+      <Filter>Core\DX</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Graphics.cpp">
+      <Filter>Base</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="JugGfx\Graphics.h">
+    <ClInclude Include="JugGfx\RenderDevice.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Shader.h">
@@ -60,14 +60,14 @@
     <ClInclude Include="JugGfx\Error.h">
       <Filter>Error</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\API.h">
-      <Filter>Base</Filter>
-    </ClInclude>
     <ClInclude Include="JugGfx\DXGI.h">
-      <Filter>Core\DirectX</Filter>
+      <Filter>Core\DX</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\DxUtils.h">
-      <Filter>Core\DirectX</Filter>
+      <Filter>Core\DX</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Graphics.h">
+      <Filter>Base</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -83,7 +83,7 @@
     <Filter Include="Error">
       <UniqueIdentifier>{ea9297bc-0bae-4027-af2f-577772e6f980}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Core\DirectX">
+    <Filter Include="Core\DX">
       <UniqueIdentifier>{b9434dc7-8c65-4739-b202-471465935189}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

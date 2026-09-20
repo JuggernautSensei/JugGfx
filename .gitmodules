@@ -1,0 +1,3 @@
+[submodule "Source/Vendor/JugX"]
+	path = Source/Vendor/JugX
+	url = https://github.com/JuggernautSensei/JugX.git

@@ -1,7 +1,5 @@
 ﻿#include "pch.h"
 
-#include <bit>
-
 #include "Base.h"
 
 namespace jug
@@ -182,6 +180,50 @@ Flags<eSampler> FilterCompare(
 //  Buffer Ref
 // ===========================================
 
+ResourceRef::ResourceRef(
+    const TextureHandle _texh)
+    : m_texh(_texh)
+    , m_type(eResource::Texture)
+{
+}
+
+ResourceRef::ResourceRef(
+    const StorageBufferHandle _sbh)
+    : m_sbh(_sbh)
+    , m_type(eResource::Buffer)
+{
+}
+
+eResource ResourceRef::GetType() const
+{
+    return m_type;
+}
+
+bool ResourceRef::IsNull() const
+{
+    return m_texh.IsNull();
+}
+
+bool ResourceRef::operator==(const ResourceRef _other) const
+{
+    return m_type == _other.m_type && m_texh.GetValue() == _other.m_texh.GetValue();
+}
+
+ResourceRef::operator bool() const
+{
+    return !IsNull();
+}
+
+TextureHandle ResourceRef::GetTextureHandle() const
+{
+    return m_texh;
+}
+
+StorageBufferHandle ResourceRef::GetStorageBufferHandle() const
+{
+    return m_sbh;
+}
+
 BufferRef::BufferRef()
     : m_vbh(kNullHandle)
     , m_type(eBuffer::Vertex)
@@ -230,8 +272,13 @@ eBuffer BufferRef::GetType() const
 
 bool BufferRef::IsNull() const
 {
-    // 모든 핸들이 같은 레이아웃이라 어느 멤버로 봐도 결과가 같다.
     return m_vbh.IsNull();
+}
+
+bool BufferRef::operator==(
+    const BufferRef _other) const
+{
+    return m_type == _other.m_type && m_vbh.GetValue() == _other.m_vbh.GetValue();
 }
 
 BufferRef::operator bool() const

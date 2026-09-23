@@ -7,8 +7,12 @@
   "builtin-baseline": "e3ed41868d5034bc608eaaa58383cd6ecdbb5ffb",
   "dependencies": [
     "openimageio",
-    "fmt",
     "parallel-hashmap",
-    "sdl3"
+    "sdl3",
+    "imguizmo",
+    {
+      "name": "imgui",
+      "features": [ "docking-experimental" ]
+    }
   ]
 }

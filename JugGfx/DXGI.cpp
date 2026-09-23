@@ -1,10 +1,7 @@
 ﻿#include "pch.h"
 #include "DXGI.h"
 
-#include <JugX/CoreLogger.h>
-#include <JugX/StringEncoder.h>
-
-#include "DxUtils.h"
+#include "DxMacro.h"
 
 namespace jug
 {

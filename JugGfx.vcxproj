@@ -11,38 +11,45 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Source\Vendor\JugX\JugX.vcxproj">
-      <Project>{71c0cb85-1218-4140-95ff-caca4f615774}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
+    <ClInclude Include="JugGfx\DxMacro.h" />
     <ClInclude Include="JugGfx\DXGI.h" />
-    <ClInclude Include="JugGfx\DxUtils.h" />
-    <ClInclude Include="JugGfx\RenderDevice.h" />
+    <ClInclude Include="JugGfx\GeometryFactory.h" />
+    <ClInclude Include="JugGfx\Graphics.h" />
+    <ClInclude Include="JugGfx\ImGui.h" />
+    <ClInclude Include="JugGfx\ImGuiRenderer.h" />
+    <ClInclude Include="JugGfx\RenderGraph.h" />
     <ClInclude Include="JugGfx\Base.h" />
     <ClInclude Include="JugGfx\Error.h" />
-    <ClInclude Include="JugGfx\Graphics.h" />
+    <ClInclude Include="JugGfx\Native.h" />
     <ClInclude Include="JugGfx\Image.h" />
     <ClInclude Include="JugGfx\Shader.h" />
     <ClInclude Include="JugGfx\Texture.h" />
+    <ClInclude Include="JugGfx\Transform.h" />
     <ClInclude Include="JugGfx\VertexLayout.h" />
     <ClInclude Include="JugGfx\pch.h" />
+    <ClInclude Include="JugGfx\TangentNormal.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="JugGfx\DxMacro.cpp" />
     <ClCompile Include="JugGfx\DXGI.cpp" />
-    <ClCompile Include="JugGfx\DxUtils.cpp" />
-    <ClCompile Include="JugGfx\RenderDevice.cpp" />
+    <ClCompile Include="JugGfx\GeometryFactory.cpp" />
+    <ClCompile Include="JugGfx\Graphics.cpp" />
+    <ClCompile Include="JugGfx\ImGui.cpp" />
+    <ClCompile Include="JugGfx\ImGuiRenderer.cpp" />
+    <ClCompile Include="JugGfx\RenderGraph.cpp" />
     <ClCompile Include="JugGfx\Base.cpp" />
     <ClCompile Include="JugGfx\Error.cpp" />
-    <ClCompile Include="JugGfx\Graphics.cpp" />
+    <ClCompile Include="JugGfx\Native.cpp" />
     <ClCompile Include="JugGfx\Image.cpp" />
     <ClCompile Include="JugGfx\Shader.cpp" />
     <ClCompile Include="JugGfx\Texture.cpp" />
+    <ClCompile Include="JugGfx\Transform.cpp" />
     <ClCompile Include="JugGfx\VertexLayout.cpp" />
     <ClCompile Include="JugGfx\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="JugGfx\TangentNormal.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -78,10 +85,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath);$(SolutionDir)Source\Vendor\JugX\</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);Vendor\JugX\</IncludePath>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(IncludePath);$(SolutionDir)Source\Vendor\JugX\</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);Vendor\JugX\</IncludePath>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
@@ -101,6 +112,7 @@
       <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -110,6 +122,9 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>"C:\Users\Ahnjiwoo\AppData\Local\Python\bin\python.exe" "$(ProjectDir)Scripts\generate_header.py"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -126,6 +141,7 @@
       <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -135,6 +151,9 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>"C:\Users\Ahnjiwoo\AppData\Local\Python\bin\python.exe" "$(ProjectDir)Scripts\generate_header.py"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

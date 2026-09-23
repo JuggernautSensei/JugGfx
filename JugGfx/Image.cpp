@@ -1,9 +1,6 @@
 ﻿#include "pch.h"
 #include "Image.h"
 
-#include <JugX/CoreLogger.h>
-#include <JugX/Error.h>
-
 #include "Error.h"
 #include "Texture.h"
 
@@ -31,7 +28,7 @@ const OIIO::ImageSpec& Image::GetSpec() const
     return m_pImage->spec();
 }
 
-Result<Memory> Image::Read(
+Result<Buffer<std::byte>> Image::Read(
     const uint32_t _layer,
     const uint32_t _mip) const
 {
@@ -41,16 +38,15 @@ Result<Memory> Image::Read(
     const OIIO::ImageSpec& spec = m_pImage->spec();
     const auto [w, h, d]        = CalcTextureSize(spec.width, spec.height, spec.depth, _mip);
     const uint32_t numPixels    = w * h * d;
-    const int      numChannels  = spec.nchannels == 3 ? 4 : spec.nchannels;
-    const size_t   byteWidth    = static_cast<size_t>(numChannels) * numPixels * spec.format.size();
+    const uint32_t byteWidth    = spec.nchannels * numPixels * static_cast<uint32_t>(spec.format.size());
 
-    Memory mem = AllocMemory(byteWidth);
-    if (!m_pImage->read_image(static_cast<int>(_layer), static_cast<int>(_mip), 0, numChannels, spec.format, mem.GetPtr()))
+    Buffer<std::byte> buf(byteWidth);
+    if (!m_pImage->read_image(static_cast<int>(_layer), static_cast<int>(_mip), 0, spec.nchannels, spec.format, buf.GetPtr()))
     {
         JUG_CORE_LOG_ERROR("Failed to read image layer {} mip {}: {}", _layer, _mip, OIIO::geterror());
         return eGraphicsError::ImageReadFailed;
     }
-    return mem;
+    return buf;
 }
 
 uint32_t Image::GetNumLayers() const

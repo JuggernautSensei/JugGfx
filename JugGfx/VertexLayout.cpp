@@ -1,8 +1,6 @@
 ﻿#include "pch.h"
 #include "VertexLayout.h"
 
-#include <JugX/MemoryHasher.h>
-
 namespace jug
 {
 

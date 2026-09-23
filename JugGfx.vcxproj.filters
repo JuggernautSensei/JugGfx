@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="JugGfx\RenderDevice.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
     <ClCompile Include="JugGfx\Shader.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
@@ -13,32 +10,50 @@
     <ClCompile Include="JugGfx\pch.cpp">
       <Filter>Base</Filter>
     </ClCompile>
+    <ClCompile Include="JugGfx\DXGI.cpp">
+      <Filter>Graphics\DirectX</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Native.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\GeometryFactory.cpp">
+      <Filter>Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\TangentNormal.cpp">
+      <Filter>Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\DxMacro.cpp">
+      <Filter>Graphics\DirectX</Filter>
+    </ClCompile>
     <ClCompile Include="JugGfx\Base.cpp">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Graphics.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\Texture.cpp">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\VertexLayout.cpp">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\RenderGraph.cpp">
+      <Filter>RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ImGuiRenderer.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ImGui.cpp">
+      <Filter>ImGui</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\Error.cpp">
       <Filter>Error</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\DXGI.cpp">
-      <Filter>Core\DX</Filter>
-    </ClCompile>
-    <ClCompile Include="JugGfx\DxUtils.cpp">
-      <Filter>Core\DX</Filter>
-    </ClCompile>
-    <ClCompile Include="JugGfx\Graphics.cpp">
-      <Filter>Base</Filter>
+    <ClCompile Include="JugGfx\Transform.cpp">
+      <Filter>Scene\Transform</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="JugGfx\RenderDevice.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="JugGfx\Shader.h">
       <Filter>Resource</Filter>
     </ClInclude>
@@ -48,43 +63,85 @@
     <ClInclude Include="JugGfx\pch.h">
       <Filter>Base</Filter>
     </ClInclude>
+    <ClInclude Include="JugGfx\DXGI.h">
+      <Filter>Graphics\DirectX</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Native.h">
+      <Filter>Base</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\GeometryFactory.h">
+      <Filter>Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\TangentNormal.h">
+      <Filter>Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\DxMacro.h">
+      <Filter>Graphics\DirectX</Filter>
+    </ClInclude>
     <ClInclude Include="JugGfx\Base.h">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Graphics.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Texture.h">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\VertexLayout.h">
-      <Filter>Core</Filter>
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\RenderGraph.h">
+      <Filter>RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ImGuiRenderer.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ImGui.h">
+      <Filter>ImGui</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Error.h">
       <Filter>Error</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\DXGI.h">
-      <Filter>Core\DX</Filter>
-    </ClInclude>
-    <ClInclude Include="JugGfx\DxUtils.h">
-      <Filter>Core\DX</Filter>
-    </ClInclude>
-    <ClInclude Include="JugGfx\Graphics.h">
-      <Filter>Base</Filter>
+    <ClInclude Include="JugGfx\Transform.h">
+      <Filter>Scene\Transform</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Core">
-      <UniqueIdentifier>{c8ea93bf-ac2d-4858-8d68-31721be5cdc1}</UniqueIdentifier>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{2758f465-f358-4260-aa53-cd49969989c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geometry">
+      <UniqueIdentifier>{131a49d4-ee18-4a25-8550-a954174a568f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Error">
+      <UniqueIdentifier>{4b47f499-0de8-4c36-8777-6fb8fc55e31d}</UniqueIdentifier>
     </Filter>
     <Filter Include="Base">
       <UniqueIdentifier>{419a3a41-fa99-43d5-9b8f-aa9dd13e1927}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource">
-      <UniqueIdentifier>{2758f465-f358-4260-aa53-cd49969989c6}</UniqueIdentifier>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{19320f5c-7dc8-4545-8d7e-cda69a878664}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Error">
-      <UniqueIdentifier>{ea9297bc-0bae-4027-af2f-577772e6f980}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Core\DX">
+    <Filter Include="Graphics\DirectX">
       <UniqueIdentifier>{b9434dc7-8c65-4739-b202-471465935189}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderGraph">
+      <UniqueIdentifier>{22ce64f6-ee22-4844-b637-69f2584264ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImGui">
+      <UniqueIdentifier>{48b64afd-cfd8-465c-96a0-ae51e3a59af1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Asset">
+      <UniqueIdentifier>{95d8cf73-1d88-4b23-af09-47ffe1e14bb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{630d6343-18aa-4cc2-97cb-594c95832ba8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\Transform">
+      <UniqueIdentifier>{2402047f-ad20-4b36-97f4-117a42d228ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene\Camera">
+      <UniqueIdentifier>{8f2d759e-56ab-4163-92ec-d2ef733cfa9c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

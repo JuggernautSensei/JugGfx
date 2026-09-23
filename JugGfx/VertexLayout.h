@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <JugX/EnumArray.h>
 
 namespace jug
 {

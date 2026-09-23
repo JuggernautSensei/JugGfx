@@ -1,8 +1,4 @@
 ﻿#pragma once
-#include <JugX/EnumFlags.h>
-#include <JugX/Handle.h>
-#include <JugX/MemoryView.h>
-
 #include "Texture.h"
 #include "VertexLayout.h"
 
@@ -43,7 +39,7 @@ enum class eTextureOption : uint32_t
     ShaderReadWrite = 1 << 4,   // can be read and written by shader.
 
     // misc
-    HasMips = 1 << 5,   // alloc mips storage. (w x h x d) ~ (1 x 1 x 1)
+    HasMips = 1 << 5,   // alloc mips storage. (w render_graph_detail h render_graph_detail d) ~ (1 render_graph_detail 1 render_graph_detail 1)
 };
 
 enum class eMSAA
@@ -98,6 +94,12 @@ enum class eBuffer
     Index,
     Storage,
     Constant,
+};
+
+enum class eResource
+{
+    Buffer,
+    Texture,
 };
 
 enum class eCubeFace
@@ -253,7 +255,7 @@ enum class eStencil : uint32_t
 {
     None = 0,
 
-    // stencil (x) depth (o)
+    // stencil (render_graph_detail) depth (o)
     StencilFail_DepthPass_Keep    = 0 << 0,   // default
     StencilFail_DepthPass_Zero    = 1 << 0,
     StencilFail_DepthPass_Replace = 2 << 0,
@@ -263,7 +265,7 @@ enum class eStencil : uint32_t
     StencilFail_DepthPass_Incr    = 6 << 0,
     StencilFail_DepthPass_Decr    = 7 << 0,
 
-    // stencil (o) depth (x)
+    // stencil (o) depth (render_graph_detail)
     StencilPass_DepthFail_Keep    = 0 << 3,   // default
     StencilPass_DepthFail_Zero    = 1 << 3,
     StencilPass_DepthFail_Replace = 2 << 3,
@@ -382,7 +384,7 @@ using ShaderHandle         = Handle<ShaderDesc>;
 using ProgramHandle        = Handle<ProgramDesc>;
 
 // ===========================================
-//  Resource
+//  ResourceRef
 // ===========================================
 
 struct VertexLayoutDesc
@@ -492,6 +494,31 @@ struct ProgramDesc
 //  Misc
 // ===========================================
 
+class ResourceRef
+{
+public:
+    ResourceRef() = default;
+    /* implicit */ ResourceRef(TextureHandle _texh);
+    /* implicit */ ResourceRef(StorageBufferHandle _sbh);
+
+    [[nodiscard]] eResource GetType() const;
+    [[nodiscard]] bool      IsNull() const;
+
+    [[nodiscard]] bool operator==(ResourceRef _other) const;
+    explicit           operator bool() const;
+
+    [[nodiscard]] TextureHandle       GetTextureHandle() const;
+    [[nodiscard]] StorageBufferHandle GetStorageBufferHandle() const;
+
+private:
+    union
+    {
+        TextureHandle       m_texh = kNullHandle;
+        StorageBufferHandle m_sbh;
+    };
+    eResource m_type = eResource::Texture;
+};
+
 class BufferRef
 {
 public:
@@ -505,7 +532,8 @@ public:
     [[nodiscard]] eBuffer GetType() const;
     [[nodiscard]] bool    IsNull() const;
 
-    explicit operator bool() const;
+    [[nodiscard]] bool operator==(BufferRef _other) const;
+    explicit           operator bool() const;
 
     [[nodiscard]] VertexBufferHandle   GetVertexBufferHandle() const;
     [[nodiscard]] InstanceBufferHandle GetInstanceBufferHandle() const;
@@ -564,4 +592,4 @@ struct GraphicsStats
     uint64_t gpuMemorySize = 0;   // byte
 };
 
-}   // namespace jug
+}   // namespace jug    

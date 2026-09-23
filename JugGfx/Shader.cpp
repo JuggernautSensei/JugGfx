@@ -1,13 +1,6 @@
 ﻿#include "pch.h"
 #include "Shader.h"
 
-#include <JugX/Alloc.h>
-#include <JugX/CoreLogger.h>
-#include <JugX/FileReader.h>
-#include <JugX/FileReaderWriter.h>
-#include <JugX/FileWriter.h>
-#include <JugX/SystemError.h>
-
 #include "Error.h"
 
 namespace jug
@@ -28,7 +21,7 @@ namespace
             case eShader::Compute:
                 return "cs_5_0";
             default:
-                JUG_ASSERT(false, "Unrecognized shader type");
+                JUG_ASSERT(false, "Unrecognized shader m_type");
                 return "UnknownShader";
         }
     }
@@ -68,8 +61,8 @@ Result<Shader> Shader::Compile(
     const StringView         _source,
     const ShaderCompileDesc& _desc)
 {
-    Shader shader = {};
-    const Error    err    = shader.CompileFromSource_(_source, _desc);
+    Shader      shader = {};
+    const Error err    = shader.CompileFromSource_(_source, _desc);
     if (err.IsError())
     {
         return err;
@@ -81,20 +74,13 @@ Result<Shader> Shader::CompileFromFile(
     const FilePath&          _filePath,
     const ShaderCompileDesc& _desc)
 {
-    Shader shader = {};
-    const Error    err    = shader.CompileFromFile_(_filePath, _desc);
+    Shader      shader = {};
+    const Error err    = shader.CompileFromFile_(_filePath, _desc);
     if (err.IsError())
     {
         return err;
     }
     return shader;
-}
-
-Memory Shader::Save() const
-{
-    Memory mem = AllocMemory(static_cast<size_t>(m_pBlob->GetBufferSize()));
-    std::memcpy(mem.GetPtr(), m_pBlob->GetBufferPointer(), static_cast<size_t>(m_pBlob->GetBufferSize()));
-    return mem;
 }
 
 Error Shader::SaveToFile(
@@ -221,9 +207,7 @@ Error Shader::CompileFromSource_(
     }
 
     ID3DBlob*     pErrorBlob = nullptr;
-    const HRESULT hr         = ::D3DCompile(
-        _source.data(),
-        _source.size(),
+    const HRESULT hr         = ::D3DCompile(_source.data(),_source.size(),
         nullptr,
         pMacro,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,

@@ -1,9 +1,4 @@
 ﻿#pragma once
-#include <JugX/Error.h>
-#include <JugX/Memory.h>
-#include <JugX/MemoryView.h>
-#include <JugX/Result.h>
-
 #include "Base.h"
 
 namespace jug
@@ -72,8 +67,7 @@ public:
     //  Save
     // ===========================================
 
-    [[nodiscard]] Memory Save() const;
-    [[nodiscard]] Error  SaveToFile(const FilePath& _filePath) const;
+    [[nodiscard]] Error SaveToFile(const FilePath& _filePath) const;
 
     // ===========================================
     //  Access

@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <JugX/Error.h>
 
 namespace jug
 {

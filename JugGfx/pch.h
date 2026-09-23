@@ -1,4 +1,4 @@
 ﻿#pragma once
-#include <JugX/pch.h>
+#include <JugX/JugX.h>
 
-#include "Graphics.h"
+#include "Native.h"

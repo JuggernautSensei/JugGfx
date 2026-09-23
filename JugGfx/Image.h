@@ -1,7 +1,4 @@
 ﻿#pragma once
-#include <JugX/Memory.h>
-#include <JugX/MemoryView.h>
-#include <JugX/Result.h>
 #include <OpenImageIO/filesystem.h>
 #include <OpenImageIO/imageio.h>
 
@@ -17,10 +14,10 @@ public:
     [[nodiscard]] static Result<Image> Load(MemoryView _mem);
     [[nodiscard]] static Result<Image> LoadFromFile(const FilePath& _path);
 
-    [[nodiscard]] const OIIO::ImageSpec& GetSpec() const;
-    [[nodiscard]] Result<Memory>         Read(uint32_t _layer, uint32_t _mip) const;
-    [[nodiscard]] uint32_t               GetNumLayers() const;
-    [[nodiscard]] uint32_t               GetNumMips() const;
+    [[nodiscard]] const OIIO::ImageSpec&    GetSpec() const;
+    [[nodiscard]] Result<Buffer<std::byte>> Read(uint32_t _layer, uint32_t _mip) const;
+    [[nodiscard]] uint32_t                  GetNumLayers() const;
+    [[nodiscard]] uint32_t                  GetNumMips() const;
 
 private:
     Image() = default;

@@ -1,25 +1,28 @@
 ﻿#pragma once
-#include <imgui.h>
-#include <ImGuizmo.h>
-#include <imgui_stdlib.h>
+#include "ImGuiInclude.h"
 
-#include "ImGuiRenderer.h"
+namespace jug
+{
 
-// ===========================================
-//  JugGfx texture 용 ImGui 확장
-//   jug::ImGuiTexture 를 받아 ImGuiRenderer::ToTextureID 로 패킹한 뒤 기존 ImGui API 로 전달.
-//
-//   ImGui::Image({ texh }, size);                                        // 2D
-//   ImGui::Image({ .texh = arrayTexh, .layer = 3 }, size);                // 2D array slice
-//   ImGui::Image({ .texh = cubeTexh, .face = jug::eCubeFace::NegY }, size); // cube face
-//   ImGui::Image({ .texh = texh, .mip = 2 }, size);                       // mip 고정
-// ===========================================
+struct ImGuiTexture
+{
+    TextureHandle texh  = kNullHandle;
+    uint32_t      mip   = 0;
+    uint32_t      layer = 0;
+    eCubeFace     face  = eCubeFace::PosX;
+};
+
+[[nodiscard]] uint64_t     ToTextureID(TextureHandle _texh);
+[[nodiscard]] uint64_t     ToTextureID(ImGuiTexture _texture);
+[[nodiscard]] ImGuiTexture FromTextureID(uint64_t _id);
+
+}
 
 namespace ImGui
 {
 
 // ===========================================
-//  Widget
+//  public api
 // ===========================================
 
 void Image(
@@ -46,7 +49,7 @@ bool ImageButton(
     const ImVec4&            _tintCol = ImVec4(1, 1, 1, 1));
 
 // ===========================================
-//  Draw List (low level)
+//  low level
 // ===========================================
 
 void AddImage(

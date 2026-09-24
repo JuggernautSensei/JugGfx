@@ -22,6 +22,22 @@ String LowMemoryEvent::ToString() const
     return "LowMemoryEvent";
 }
 
+SystemEvent::SystemEvent(
+    const SDL_Event& _event)
+    : m_pEvent(&_event)
+{
+}
+
+const SDL_Event& SystemEvent::GetEvent() const
+{
+    return *m_pEvent;
+}
+
+String SystemEvent::ToString() const
+{
+    return Format("SystemEvent: type: {}", m_pEvent->type);
+}
+
 // ===========================================
 //  Window
 // ===========================================

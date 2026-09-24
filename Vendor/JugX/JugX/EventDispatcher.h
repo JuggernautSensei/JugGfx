@@ -18,12 +18,12 @@ public:
 
     template<EventT T, typename Fn>
         requires EventDispatchFnT<T, Fn>
-    bool Dispatch(
+    void Dispatch(
         Fn&& _fn)
     {
         if (m_pEvent->IsHandled())
         {
-            return false;
+            return;
         }
 
         if (m_hash == T::kHash)
@@ -31,13 +31,11 @@ public:
             T& event = *static_cast<T*>(m_pEvent);
             _fn(event);
         }
-
-        return true;
     }
 
     template<EventT T, typename Caller, typename Method>
         requires EventDispatchMethodT<T, Caller, Method>
-    bool Dispatch(
+    void Dispatch(
         Caller*  _pCaller,
         Method&& _method)
     {
@@ -45,7 +43,7 @@ public:
 
         if (m_pEvent->IsHandled())
         {
-            return false;
+            return;
         }
 
         if (m_hash == T::kHash)
@@ -53,8 +51,6 @@ public:
             T& event = *static_cast<T*>(m_pEvent);
             (_pCaller->*_method)(event);
         }
-
-        return true;
     }
 
 private:

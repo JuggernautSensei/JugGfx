@@ -3,9 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/Examples/">
-    <Project Path="Examples/1. HelloWorld/1. HelloWorld.vcxproj" Id="3341f8b7-835e-4079-a207-b3ae81065c05" />
-  </Folder>
   <Project Path="JugGfx.vcxproj" Id="deefa6fc-767a-4cd0-bd6f-6c1be93ecb5e" />
   <Project Path="Vendor/JugX/JugX.vcxproj" Id="71c0cb85-1218-4140-95ff-caca4f615774" />
 </Solution>

@@ -28,7 +28,7 @@ concept EventT = std::is_base_of_v<Event, T>;
 
 }   // namespace jug
 
-#define JUG_EVENT_BODY(_type)                                       \
+#define JUG_EVENT_BODY(_type)                                                  \
 public:                                                                        \
     static constexpr uint64_t          kHash = ::jug::HashOf<_type>();         \
     static constexpr ::jug::StringView kName = ::jug::NameOf<_type>();         \

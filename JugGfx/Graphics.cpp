@@ -852,10 +852,10 @@ Graphics::~Graphics()
 //  System
 // ===========================================
 
-Graphics* Graphics::GetInstance()
+Graphics& Graphics::GetSingleton()
 {
     JUG_ASSERT(g_pSingleton, "Graphics instance is not created yet.");
-    return g_pSingleton;
+    return *g_pSingleton;
 }
 
 size_t Graphics::ReportLiveObjects()
@@ -2040,10 +2040,10 @@ void Graphics::UpdateTexture_(
     JUG_ASSERT(_mip < tex.numMips, "Invalid mip level {} for texture with {} mips.", _mip, tex.numMips);
     JUG_ASSERT(_layer < tex.numLayers, "Invalid layer {} for texture with {} layers.", _layer, tex.numLayers);
 
-    const auto [w, h, d] = CalcTextureSize(tex.width, tex.height, tex.depth, _mip);
-    JUG_ASSERT(_offsetX + _width <= w, "UpdateTexture width exceeds the mip {} size {}.", _mip, w);
-    JUG_ASSERT(_offsetY + _height <= h, "UpdateTexture height exceeds the mip {} size {}.", _mip, h);
-    JUG_ASSERT(_offsetZ + _depth <= d, "UpdateTexture depth exceeds the mip {} size {}.", _mip, d);
+    const VECTOR3U size = CalcTextureSize(tex.width, tex.height, tex.depth, _mip);
+    JUG_ASSERT(_offsetX + _width <= size.width, "UpdateTexture width exceeds the mip {} size {}.", _mip, size.width);
+    JUG_ASSERT(_offsetY + _height <= size.height, "UpdateTexture height exceeds the mip {} size {}.", _mip, size.height);
+    JUG_ASSERT(_offsetZ + _depth <= size.depth, "UpdateTexture depth exceeds the mip {} size {}.", _mip, size.depth);
 
     const uint32_t index      = CalcTextureIndex(_mip, _layer, tex.numMips);
     const uint32_t bpp        = GetBitPerPixel(tex.format);
@@ -2147,26 +2147,26 @@ void Graphics::CopyTexture(
     const TextureD3D11& dst = m_texturePool[_dstTexh];
     const TextureD3D11& src = m_texturePool[_srcTexh];
 
-    const uint32_t dstIndex       = CalcTextureIndex(_dstMip, _dstLayer, dst.numMips);
-    const uint32_t srcIndex       = CalcTextureIndex(_srcMip, _srcLayer, src.numMips);
-    const auto [dstW, dstH, dstD] = CalcTextureSize(dst.width, dst.height, dst.depth, _dstMip);
-    const auto [srcW, srcH, srcD] = CalcTextureSize(src.width, src.height, src.depth, _srcMip);
+    const uint32_t dstIndex = CalcTextureIndex(_dstMip, _dstLayer, dst.numMips);
+    const uint32_t srcIndex = CalcTextureIndex(_srcMip, _srcLayer, src.numMips);
+    const VECTOR3U dstSize  = CalcTextureSize(dst.width, dst.height, dst.depth, _dstMip);
+    const VECTOR3U srcSize  = CalcTextureSize(src.width, src.height, src.depth, _srcMip);
 
     JUG_ASSERT(!dst.bImmutable, "An immutable texture cannot be a copy destination.");
     JUG_ASSERT(_dstMip < dst.numMips && _dstLayer < dst.numLayers, "Texture copy destination subresource is out of range.");
     JUG_ASSERT(_srcMip < src.numMips && _srcLayer < src.numLayers, "Texture copy source subresource is out of range.");
     JUG_ASSERT(dst.pResource != src.pResource || dstIndex != srcIndex, "A texture cannot be copied onto itself.");
     JUG_ASSERT(MakeTextureFormatInfo_(dst.format).tex == MakeTextureFormatInfo_(src.format).tex, "A texture copy requires both textures to share the same typeless format.");
-    JUG_ASSERT(_srcX < srcW && _srcY < srcH && _srcZ < srcD, "Texture copy source offset is out of bounds.");
+    JUG_ASSERT(_srcX < dstSize.width && _srcY < srcSize.height && _srcZ < srcSize.depth, "Texture copy source offset is out of bounds.");
 
-    const uint32_t width  = _widthOrZero == 0 ? srcW - _srcX : _widthOrZero;
-    const uint32_t height = _heightOrZero == 0 ? srcH - _srcY : _heightOrZero;
-    const uint32_t depth  = _depthOrZero == 0 ? srcD - _srcZ : _depthOrZero;
+    const uint32_t width  = _widthOrZero == 0 ? srcSize.width - _srcX : _widthOrZero;
+    const uint32_t height = _heightOrZero == 0 ? srcSize.height - _srcY : _heightOrZero;
+    const uint32_t depth  = _depthOrZero == 0 ? srcSize.depth - _srcZ : _depthOrZero;
 
-    JUG_ASSERT(_srcX + width <= srcW && _srcY + height <= srcH && _srcZ + depth <= srcD, "Texture copy source range is out of bounds.");
-    JUG_ASSERT(_dstX + width <= dstW && _dstY + height <= dstH && _dstZ + depth <= dstD, "Texture copy destination range is out of bounds.");
+    JUG_ASSERT(_srcX + width <= srcSize.width && _srcY + height <= srcSize.height && _srcZ + depth <= srcSize.depth, "Texture copy source range is out of bounds.");
+    JUG_ASSERT(_dstX + width <= dstSize.width && _dstY + height <= dstSize.height && _dstZ + depth <= dstSize.depth, "Texture copy destination range is out of bounds.");
 
-    const bool bWholeSubresource = _srcX == 0 && _srcY == 0 && _srcZ == 0 && width == srcW && height == srcH && depth == srcD;
+    const bool bWholeSubresource = _srcX == 0 && _srcY == 0 && _srcZ == 0 && width == srcSize.width && height == srcSize.height && depth == srcSize.depth;
     JUG_ASSERT(!IsDepthFormat(src.format) || bWholeSubresource, "A depth-stencil texture can only be copied as a whole subresource.");
 
     D3D11_BOX box;
@@ -2193,10 +2193,10 @@ size_t Graphics::ReadTexture(
 
     const uint32_t index      = CalcTextureIndex(_mip, _layer, texture.numMips);
     const uint32_t bpp        = GetBitPerPixel(texture.format);
-    const auto [w, h, d]      = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
-    const uint32_t rowPitch   = (w * bpp + 7) / 8;
-    const uint32_t slicePitch = rowPitch * h;
-    const uint32_t byteWidth  = slicePitch * d;
+    const VECTOR3U size       = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
+    const uint32_t rowPitch   = (size.width * bpp + 7) / 8;
+    const uint32_t slicePitch = rowPitch * size.height;
+    const uint32_t byteWidth  = slicePitch * size.depth;
     const uint32_t read       = Min<uint32_t>(static_cast<uint32_t>(_dst.GetSize()), byteWidth);
 
     D3D11_MAPPED_SUBRESOURCE mapped = {};
@@ -2206,9 +2206,9 @@ size_t Graphics::ReadTexture(
     std::byte*       pDstBase = _dst.GetPtr();
 
     size_t written = 0;
-    for (uint32_t z = 0; z < d && written < read; ++z)
+    for (uint32_t z = 0; z < size.depth && written < read; ++z)
     {
-        for (uint32_t y = 0; y < h && written < read; ++y)
+        for (uint32_t y = 0; y < size.height && written < read; ++y)
         {
             const std::byte* pSrc = pSrcBase + z * mapped.DepthPitch + y * mapped.RowPitch;
             const uint32_t   copy = Min<uint32_t>(rowPitch, read - written);
@@ -2420,6 +2420,22 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
 
     JUG_CORE_LOG_INFO("Swap chain frame buffer created. handle = {}, {}x{}, format = {}, buffers = {}, tearing = {}", fbh, _width, _height, static_cast<uint32_t>(_format), _numBuffers, m_caps.bAllowTearing);
     return fbh;
+}
+
+FrameBufferHandle Graphics::FindFrameBufferOrNull(
+    const SDL_WindowID _wndID)
+{
+    JUG_ASSERT(_wndID != 0, "FindFrameBufferOrNull requires a valid window ID.");
+
+    for (const FrameBufferHandle fbh: m_swapChainFbhs)
+    {
+        const FrameBufferD3D11& fb = m_frameBufferPool[fbh];
+        if (fb.wndID == _wndID)
+        {
+            return fbh;
+        }
+    }
+    return kNullHandle;
 }
 
 void Graphics::ResizeFrameBuffer(

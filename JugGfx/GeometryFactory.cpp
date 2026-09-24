@@ -45,9 +45,9 @@ namespace
         {
             const Vertex& vertex = _vertices[i];
 
-            const VECTOR3 position  = vertex.position * _rotation;
-            const VECTOR3 normal    = vertex.normal * _rotation;
-            const VECTOR3 tangent   = vertex.tangent * _rotation;
+            const VECTOR3 position  = Rotate(vertex.position, _rotation);
+            const VECTOR3 normal    = Rotate(vertex.normal, _rotation);
+            const VECTOR3 tangent   = Rotate(vertex.tangent, _rotation);
             const VECTOR3 bitangent = Cross(normal, tangent);
 
             std::byte* pDst = result.vertexData.data() + i * stride;

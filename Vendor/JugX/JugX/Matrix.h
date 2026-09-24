@@ -6,13 +6,10 @@ namespace jug
 
 struct QUATERNION;
 
-// =========================================================
-//  Matrix
-//   1. 4x4 행렬
-//   2. 행 우선 벡터 (row-major)
-//   3. 행 벡터 규약 (row-vector)
-//   4. 왼손 좌표계 (left-handed)
-// =========================================================
+// 1. 4x4 행렬
+// 2. 행 우선
+// 3. 행 벡터
+// 4. 왼손 좌표계
 
 struct alignas(16) MATRIX
 {
@@ -44,10 +41,6 @@ struct alignas(16) MATRIX
     {
     }
     // clang-format on
-
-    // =======================================================
-    //  Factory (Affine Transform)
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeTranslation(
         const VECTOR3 _translation)
@@ -110,7 +103,6 @@ struct alignas(16) MATRIX
         };
     }
 
-    // 회전의 순서는 Y - X - Z.
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeRotation(
         const VECTOR3 _pyrRad)
     {
@@ -173,10 +165,6 @@ struct alignas(16) MATRIX
         };
     }
 
-    // =======================================================
-    //  Factory (Fast Scale render_graph_detail Rotation render_graph_detail Translation)
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeSRT(
         const VECTOR3 _scale,
         const VECTOR3 _forward,
@@ -209,7 +197,6 @@ struct alignas(16) MATRIX
         const float cx = Cos(_pyrRad.e[0]), sx = Sin(_pyrRad.e[0]);
         const float cy = Cos(_pyrRad.e[1]), sy = Sin(_pyrRad.e[1]);
         const float cz = Cos(_pyrRad.e[2]), sz = Sin(_pyrRad.e[2]);
-
         const float r00 = cy * cz + sx * sy * sz, r01 = cx * sz, r02 = sx * cy * sz - cz * sy;
         const float r10 = sx * sy * cz - cy * sz, r11 = cx * cz, r12 = sy * sz + sx * cy * cz;
         const float r20 = cx * sy, r21 = -sx, r22 = cx * cy;
@@ -238,10 +225,9 @@ struct alignas(16) MATRIX
         JUG_ASSERT(IsNormalized(_up), "Up dir must be normalized");
         JUG_ASSERT(!IsParallel(_forward, _up), "Forward and up dirs cannot be parallel");
 
-        const VECTOR3 f = _forward;
-        const VECTOR3 r = Normalize(Cross(_up, f));
-        const VECTOR3 u = Cross(f, r);
-
+        const VECTOR3 f    = _forward;
+        const VECTOR3 r    = Normalize(Cross(_up, f));
+        const VECTOR3 u    = Cross(f, r);
         const VECTOR3 invs = RcpSafe(_scale);
         const float   tx = _translation.e[0], ty = _translation.e[1], tz = _translation.e[2];
 
@@ -284,10 +270,6 @@ struct alignas(16) MATRIX
         QUATERNION _rotation,
         VECTOR3    _translation);
 
-    // =======================================================
-    //  Factory (Camera)
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeViewLookTo(
         const VECTOR3 _eye,
         const VECTOR3 _dir,
@@ -306,18 +288,6 @@ struct alignas(16) MATRIX
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeViewLookTo(
         VECTOR3    _eye,
         QUATERNION _rotation);
-
-    [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakeViewLookAt(
-        const VECTOR3 _eye,
-        const VECTOR3 _target,
-        const VECTOR3 _up)
-    {
-        return MakeViewLookTo(_eye, Normalize(_target - _eye), _up);
-    }
-
-    // =======================================================
-    //  Factory (Projection)
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr static MATRIX MakePersp(
         const float _fovYRad,
@@ -430,10 +400,6 @@ struct alignas(16) MATRIX
         return MakeInvOrtho(-_width * 0.5f, _width * 0.5f, -_height * 0.5f, _height * 0.5f, _nearZ, _farZ);
     }
 
-    // =======================================================
-    //  Operators
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr MATRIX operator+(
         const MATRIX& _other) const
     {
@@ -452,7 +418,7 @@ struct alignas(16) MATRIX
         return MATRIX { r[0] * _scalar, r[1] * _scalar, r[2] * _scalar, r[3] * _scalar };
     }
 
-    [[nodiscard]] JUG_MATH_API JUG_FORCEINLINE constexpr MATRIX operator*(
+    [[nodiscard]] JUG_MATH_API JUG_FORCE_INLINE constexpr MATRIX operator*(
         const MATRIX& _other) const
     {
 #ifdef JUG_SIMD_AVAILABLE
@@ -465,23 +431,23 @@ struct alignas(16) MATRIX
 
             const simd::M128 a0   = r[0].ToSIMD();
             const simd::M128 row0 = simd::Add(
-                simd::MulAdd(simd::Splat<1>(a0), b1, simd::Mul(simd::Splat<0>(a0), b0)),
-                simd::MulAdd(simd::Splat<3>(a0), b3, simd::Mul(simd::Splat<2>(a0), b2)));
+                simd::MultAdd(simd::Splat<1>(a0), b1, simd::Mult(simd::Splat<0>(a0), b0)),
+                simd::MultAdd(simd::Splat<3>(a0), b3, simd::Mult(simd::Splat<2>(a0), b2)));
 
             const simd::M128 a1   = r[1].ToSIMD();
             const simd::M128 row1 = simd::Add(
-                simd::MulAdd(simd::Splat<1>(a1), b1, simd::Mul(simd::Splat<0>(a1), b0)),
-                simd::MulAdd(simd::Splat<3>(a1), b3, simd::Mul(simd::Splat<2>(a1), b2)));
+                simd::MultAdd(simd::Splat<1>(a1), b1, simd::Mult(simd::Splat<0>(a1), b0)),
+                simd::MultAdd(simd::Splat<3>(a1), b3, simd::Mult(simd::Splat<2>(a1), b2)));
 
             const simd::M128 a2   = r[2].ToSIMD();
             const simd::M128 row2 = simd::Add(
-                simd::MulAdd(simd::Splat<1>(a2), b1, simd::Mul(simd::Splat<0>(a2), b0)),
-                simd::MulAdd(simd::Splat<3>(a2), b3, simd::Mul(simd::Splat<2>(a2), b2)));
+                simd::MultAdd(simd::Splat<1>(a2), b1, simd::Mult(simd::Splat<0>(a2), b0)),
+                simd::MultAdd(simd::Splat<3>(a2), b3, simd::Mult(simd::Splat<2>(a2), b2)));
 
             const simd::M128 a3   = r[3].ToSIMD();
             const simd::M128 row3 = simd::Add(
-                simd::MulAdd(simd::Splat<1>(a3), b1, simd::Mul(simd::Splat<0>(a3), b0)),
-                simd::MulAdd(simd::Splat<3>(a3), b3, simd::Mul(simd::Splat<2>(a3), b2)));
+                simd::MultAdd(simd::Splat<1>(a3), b1, simd::Mult(simd::Splat<0>(a3), b0)),
+                simd::MultAdd(simd::Splat<3>(a3), b3, simd::Mult(simd::Splat<2>(a3), b2)));
 
             return MATRIX { row0, row1, row2, row3 };
         }
@@ -562,10 +528,6 @@ struct alignas(16) MATRIX
         return !(*this == _other);
     }
 
-    // =======================================================
-    //  Access
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr float& operator()(
         const size_t _row,
         const size_t _col)
@@ -602,10 +564,6 @@ struct alignas(16) MATRIX
         return r[0].GetPtr();
     }
 
-    // =======================================================
-    //  Fields
-    // =======================================================
-
     const static MATRIX kIdentity;
     const static MATRIX kZero;
     
@@ -638,9 +596,9 @@ struct alignas(16) MATRIX
     JUG_DISABLE_ANON_WARNING_END
 };
 
-static_assert(sizeof(MATRIX) == 64, "MATRIX must be tightly packed");
-static_assert(alignof(MATRIX) == 16, "MATRIX must be 16-byte aligned for SIMD");
-static_assert(PodT<MATRIX>, "MATRIX must be POD type.");
+static_assert(sizeof(MATRIX) == 64, "Matrix4x4 must be tightly packed");
+static_assert(alignof(MATRIX) == 16, "Matrix4x4 must be 16-byte aligned for SIMD");
+static_assert(PodT<MATRIX>, "Matrix4x4 must be POD type.");
 
 // =======================================================
 //  Constants
@@ -668,7 +626,7 @@ struct MathConstants<MATRIX>
 };
 
 // =======================================================
-//  Basic
+//  Method
 // =======================================================
 
 [[nodiscard]] JUG_MATH_API constexpr MATRIX operator*(
@@ -686,11 +644,12 @@ struct MathConstants<MATRIX>
 
 [[nodiscard]] JUG_MATH_API constexpr bool IsEqualApprox(
     const MATRIX& _x,
-    const MATRIX& _y)
+    const MATRIX& _y,
+    const float   _epsilon = kEpsilon)
 {
     for (size_t i = 0; i < MATRIX::kRow; ++i)
     {
-        if (!IsEqualApprox(_x.r[i], _y.r[i]))
+        if (!IsEqualApprox(_x.r[i], _y.r[i], _epsilon))
         {
             return false;
         }
@@ -760,7 +719,7 @@ namespace matrix_detail
     return k.s0 * k.c5 - k.s1 * k.c4 + k.s2 * k.c3 + k.s3 * k.c2 - k.s4 * k.c1 + k.s5 * k.c0;
 }
 
-[[nodiscard]] JUG_MATH_API JUG_FORCEINLINE constexpr MATRIX Inverse(
+[[nodiscard]] JUG_MATH_API JUG_FORCE_INLINE constexpr MATRIX Inverse(
     const MATRIX& _mtx,
     float*        _outDetOrNull = nullptr)
 {
@@ -789,9 +748,9 @@ namespace matrix_detail
         simd::M128 v02 = simd::Shuffle2<0, 2, 0, 2>(mt2, mt0);
         simd::M128 v12 = simd::Shuffle2<1, 3, 1, 3>(mt3, mt1);
 
-        simd::M128 d0 = simd::Mul(v00, v10);
-        simd::M128 d1 = simd::Mul(v01, v11);
-        simd::M128 d2 = simd::Mul(v02, v12);
+        simd::M128 d0 = simd::Mult(v00, v10);
+        simd::M128 d1 = simd::Mult(v01, v11);
+        simd::M128 d2 = simd::Mult(v02, v12);
 
         v00 = simd::Shuffle<2, 3, 2, 3>(mt2);
         v10 = simd::Shuffle<0, 0, 1, 1>(mt3);
@@ -800,9 +759,9 @@ namespace matrix_detail
         v02 = simd::Shuffle2<1, 3, 1, 3>(mt2, mt0);
         v12 = simd::Shuffle2<0, 2, 0, 2>(mt3, mt1);
 
-        d0 = simd::Sub(d0, simd::Mul(v00, v10));
-        d1 = simd::Sub(d1, simd::Mul(v01, v11));
-        d2 = simd::Sub(d2, simd::Mul(v02, v12));
+        d0 = simd::Sub(d0, simd::Mult(v00, v10));
+        d1 = simd::Sub(d1, simd::Mult(v01, v11));
+        d2 = simd::Sub(d2, simd::Mult(v02, v12));
 
         // c0, c2, c4, c6 (짝수 열)
         simd::M128 v11b = simd::Shuffle2<1, 3, 1, 1>(d0, d2);
@@ -816,10 +775,10 @@ namespace matrix_detail
         simd::M128 v03a = simd::Shuffle<2, 0, 1, 0>(mt2);
         v13a            = simd::Shuffle2<1, 2, 1, 2>(v13a, d1);
 
-        simd::M128 c0 = simd::Mul(v00, v10b);
-        simd::M128 c2 = simd::Mul(v01, v11b);
-        simd::M128 c4 = simd::Mul(v02, v12b);
-        simd::M128 c6 = simd::Mul(v03a, v13a);
+        simd::M128 c0 = simd::Mult(v00, v10b);
+        simd::M128 c2 = simd::Mult(v01, v11b);
+        simd::M128 c4 = simd::Mult(v02, v12b);
+        simd::M128 c6 = simd::Mult(v03a, v13a);
 
         v11b = simd::Shuffle2<0, 1, 0, 0>(d0, d2);
         v00  = simd::Shuffle<2, 3, 1, 2>(mt1);
@@ -832,10 +791,10 @@ namespace matrix_detail
         v03a = simd::Shuffle<3, 2, 3, 1>(mt2);
         v13a = simd::Shuffle2<2, 1, 2, 0>(d1, v13a);
 
-        c0 = simd::Sub(c0, simd::Mul(v00, v10b));
-        c2 = simd::Sub(c2, simd::Mul(v01, v11b));
-        c4 = simd::Sub(c4, simd::Mul(v02, v12b));
-        c6 = simd::Sub(c6, simd::Mul(v03a, v13a));
+        c0 = simd::Sub(c0, simd::Mult(v00, v10b));
+        c2 = simd::Sub(c2, simd::Mult(v01, v11b));
+        c4 = simd::Sub(c4, simd::Mult(v02, v12b));
+        c6 = simd::Sub(c6, simd::Mult(v03a, v13a));
 
         // c1, c3, c5, c7 (홀수 열)
         v00             = simd::Shuffle<3, 0, 3, 0>(mt1);
@@ -851,10 +810,10 @@ namespace matrix_detail
         simd::M128 v13c = simd::Shuffle2<0, 3, 2, 3>(d1, d2);
         v13c            = simd::Shuffle<3, 0, 1, 2>(v13c);
 
-        v00  = simd::Mul(v00, v10c);
-        v01  = simd::Mul(v01, v11c);
-        v02  = simd::Mul(v02, v12c);
-        v03a = simd::Mul(v03a, v13c);
+        v00  = simd::Mult(v00, v10c);
+        v01  = simd::Mult(v01, v11c);
+        v02  = simd::Mult(v02, v12c);
+        v03a = simd::Mult(v03a, v13c);
 
         const simd::M128 c1 = simd::Sub(c0, v00);
         c0                  = simd::Add(c0, v00);
@@ -886,7 +845,7 @@ namespace matrix_detail
             return MathConstants<MATRIX>::kZero;
         }
         const simd::M128 invDetV = simd::Div(simd::SetAll(1.f), detV);
-        return MATRIX { simd::Mul(c0, invDetV),simd::Mul(c2, invDetV), simd::Mul(c4, invDetV), simd::Mul(c6, invDetV)};
+        return MATRIX { simd::Mult(c0, invDetV),simd::Mult(c2, invDetV), simd::Mult(c4, invDetV), simd::Mult(c6, invDetV)};
     }
 #endif
     const float m00 = _mtx.r[0].e[0], m01 = _mtx.r[0].e[1], m02 = _mtx.r[0].e[2], m03 = _mtx.r[0].e[3];
@@ -940,11 +899,7 @@ JUG_MATH_API constexpr void Decompose(
     QUATERNION*   _pOutRotationOrNull,
     VECTOR3*      _pOutTranslationOrNull);
 
-// =======================================================
-//  Mul (row-major)
-// =======================================================
-
-[[nodiscard]] JUG_MATH_API constexpr VECTOR4 Mul(
+[[nodiscard]] JUG_MATH_API constexpr VECTOR4 Xform(
     const VECTOR4 _v,
     const MATRIX& _mtx)
 {
@@ -952,51 +907,37 @@ JUG_MATH_API constexpr void Decompose(
     if (!std::is_constant_evaluated())
     {
         const simd::M128 v   = _v.ToSIMD();
-        simd::M128       ret = simd::Mul(simd::Splat<0>(v), _mtx.r[0].ToSIMD());
-        ret                  = simd::MulAdd(simd::Splat<1>(v), _mtx.r[1].ToSIMD(), ret);
-        ret                  = simd::MulAdd(simd::Splat<2>(v), _mtx.r[2].ToSIMD(), ret);
-        ret                  = simd::MulAdd(simd::Splat<3>(v), _mtx.r[3].ToSIMD(), ret);
+        simd::M128       ret = simd::Mult(simd::Splat<0>(v), _mtx.r[0].ToSIMD());
+        ret                  = simd::MultAdd(simd::Splat<1>(v), _mtx.r[1].ToSIMD(), ret);
+        ret                  = simd::MultAdd(simd::Splat<2>(v), _mtx.r[2].ToSIMD(), ret);
+        ret                  = simd::MultAdd(simd::Splat<3>(v), _mtx.r[3].ToSIMD(), ret);
         return ret;
     }
 #endif
-    float r[MATRIX::kCol];
-    for (size_t j = 0; j < MATRIX::kCol; ++j)
-    {
-        float sum = 0.f;
-        for (size_t k = 0; k < MATRIX::kRow; ++k)
-        {
-            sum += _v.e[k] * _mtx.r[k].e[j];
-        }
-        r[j] = sum;
-    }
-    return VECTOR4 { r[0], r[1], r[2], r[3] };
-}
-
-[[nodiscard]] JUG_MATH_API constexpr VECTOR4 operator*(
-    const VECTOR4 _v,
-    const MATRIX& _mtx)
-{
-    return Mul(_v, _mtx);
+    return VECTOR4 {
+        _v.e[0] * _mtx.r[0].e[0] + _v.e[1] * _mtx.r[1].e[0] + _v.e[2] * _mtx.r[2].e[0] + _v.e[3] * _mtx.r[3].e[0],
+        _v.e[0] * _mtx.r[0].e[1] + _v.e[1] * _mtx.r[1].e[1] + _v.e[2] * _mtx.r[2].e[1] + _v.e[3] * _mtx.r[3].e[1],
+        _v.e[0] * _mtx.r[0].e[2] + _v.e[1] * _mtx.r[1].e[2] + _v.e[2] * _mtx.r[2].e[2] + _v.e[3] * _mtx.r[3].e[2],
+        _v.e[0] * _mtx.r[0].e[3] + _v.e[1] * _mtx.r[1].e[3] + _v.e[2] * _mtx.r[2].e[3] + _v.e[3] * _mtx.r[3].e[3]
+    };
 }
 
 // 점 변환. w = 1 로 두고 변환한 뒤 원근 나눗셈까지 수행
-[[nodiscard]] JUG_MATH_API constexpr VECTOR3 MulPoint(
+[[nodiscard]] JUG_MATH_API constexpr VECTOR3 XformPoint(
     const VECTOR3 _point,
     const MATRIX& _mtx)
 {
-    const VECTOR4 p    = Mul(VECTOR4 { _point.e[0], _point.e[1], _point.e[2], 1.f }, _mtx);
-    const float   w    = p.e[3];
-    const float   invW = 1.f / w;   // w == 0. 인 경우는 정의하지 않음. VECTOR3 { inf, inf, inf }
-    return VECTOR3 { p.e[0] * invW, p.e[1] * invW, p.e[2] * invW };
+    const VECTOR4 p    = Xform(VECTOR4 { _point, 1.f }, _mtx);
+    const float   invW = 1.f / p.e[3];
+    return VECTOR3 { p } * invW;
 }
 
 // 방향 변환. w = 0 로 두고 변환한 뒤 원근 나눗셈은 수행하지 않는다.
-[[nodiscard]] JUG_MATH_API constexpr VECTOR3 MulVector(
+[[nodiscard]] JUG_MATH_API constexpr VECTOR3 XformVector(
     const VECTOR3 _v,
     const MATRIX& _mtx)
 {
-    const VECTOR4 v = Mul(VECTOR4 { _v.e[0], _v.e[1], _v.e[2], 0.f }, _mtx);
-    return VECTOR3 { v.e[0], v.e[1], v.e[2] };
+    return VECTOR3 { Xform(VECTOR4 { _v, 0.f }, _mtx) };
 }
 
 }   // namespace jug

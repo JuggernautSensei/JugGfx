@@ -7,7 +7,24 @@ namespace jug
 {
 
 // ===========================================
-//  App
+//  System (Raw SDL Event)
+// ===========================================
+
+class SystemEvent : public Event
+{
+public:
+    explicit SystemEvent(const SDL_Event& _event);
+
+    [[nodiscard]] const SDL_Event& GetEvent() const;
+    [[nodiscard]] String           ToString() const override;
+    JUG_EVENT_BODY(SystemEvent);
+
+private:
+    const SDL_Event* m_pEvent = nullptr;
+};
+
+// ===========================================
+//  Application
 // ===========================================
 
 class QuitEvent : public Event

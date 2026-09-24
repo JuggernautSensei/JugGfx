@@ -564,6 +564,7 @@ struct VertexStream
 
 struct GraphicsCaps
 {
+    // gpu
     uint32_t vendorID = 0;
     uint32_t deviceID = 0;
 
@@ -572,9 +573,12 @@ struct GraphicsCaps
     uint64_t systemMemorySize       = 0;   // byte
     uint64_t sharedSystemMemorySize = 0;   // byte
 
+    // rendering spec
     bool bAllowTearing       = false;
-    bool bDebugLayerEnabled  = false;
     bool bSoftwareRasterizer = false;
+
+    // runtime option
+    bool bDebugLayerEnabled = false;
 };
 
 struct GraphicsStats
@@ -592,4 +596,4 @@ struct GraphicsStats
     uint64_t gpuMemorySize = 0;   // byte
 };
 
-}   // namespace jug    
+}   // namespace jug

@@ -178,8 +178,8 @@ constexpr static float kInvLogNat2 = 1.4426950408889634f;
 
 [[nodiscard]] JUG_MATH_API constexpr float ToDeg(float _rad);
 [[nodiscard]] JUG_MATH_API constexpr float ToRad(float _deg);
-[[nodiscard]] JUG_MATH_API constexpr bool  IsZeroApprox(float _x);
-[[nodiscard]] JUG_MATH_API constexpr bool  IsEqualApprox(float _x, float _y);
+[[nodiscard]] JUG_MATH_API constexpr bool  IsZeroApprox(float _x, float _epsilon = kEpsilon);
+[[nodiscard]] JUG_MATH_API constexpr bool  IsEqualApprox(float _x, float _y, float _epsilon = kEpsilon);
 [[nodiscard]] JUG_MATH_API constexpr float Trunc(float _x);
 [[nodiscard]] JUG_MATH_API constexpr float Fract(float _x);
 [[nodiscard]] JUG_MATH_API constexpr float Floor(float _x);

@@ -6,7 +6,7 @@ namespace jug
 
 struct SPHERE
 {
-    JUG_MATH_API constexpr SPHERE() = default;
+    JUG_MATH_API  SPHERE() = default;
 
     JUG_MATH_API constexpr SPHERE(
         const VECTOR3 _center,
@@ -15,10 +15,6 @@ struct SPHERE
         , radius(_radius)
     {
     }
-
-    // =======================================================
-    //  Fields
-    // =======================================================
 
     const static SPHERE kZero;
     const static SPHERE kUnit;
@@ -44,17 +40,17 @@ struct MathConstants<SPHERE>
 };
 
 // ========================================================
-//  Operators
+//  Method
 // ========================================================
 
-[[nodiscard]] JUG_MATH_API constexpr SPHERE Transform(
+[[nodiscard]] JUG_MATH_API constexpr SPHERE Xform(
     const SPHERE& _sphere,
     const MATRIX& _mtx)
 {
-    const VECTOR3 p  = MulPoint(_sphere.center, _mtx);
-    const float   sx = Length(MulVector(UnitX<VECTOR3>(), _mtx));
-    const float   sy = Length(MulVector(UnitY<VECTOR3>(), _mtx));
-    const float   sz = Length(MulVector(UnitZ<VECTOR3>(), _mtx));
+    const VECTOR3 p  = XformPoint(_sphere.center, _mtx);
+    const float   sx = Length(XformVector(UnitX<VECTOR3>(), _mtx));
+    const float   sy = Length(XformVector(UnitY<VECTOR3>(), _mtx));
+    const float   sz = Length(XformVector(UnitZ<VECTOR3>(), _mtx));
     return SPHERE { p, _sphere.radius * Max(sx, sy, sz) };
 }
 

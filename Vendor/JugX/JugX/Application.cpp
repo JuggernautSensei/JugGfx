@@ -11,7 +11,7 @@ namespace jug
 
 namespace
 {
-    App* g_pSingleton = nullptr;
+    Application* g_pSingleton = nullptr;
 
     constexpr float kGamepadAxisScale = 1.f / 32767.f;
 
@@ -55,44 +55,44 @@ namespace
     }
 }   // namespace
 
-App::App(
-    const AppDesc& _desc)
+Application::Application(
+    const ApplicationDesc& _desc)
     : m_desc(_desc)
 {
-    JUG_ASSERT(!g_pSingleton, "App instance already exists.");
+    JUG_ASSERT(!g_pSingleton, "Application instance already exists.");
     g_pSingleton = this;
 }
 
-void App::Init()
+void Application::Init()
 {
 }
 
-void App::Shutdown()
+void Application::Shutdown()
 {
 }
 
-void App::OnEvent(Event& _event)
+void Application::OnEvent(Event& _event)
 {
 }
 
-void App::Update(
+void Application::Update(
     const float _deltaTimeSec)
 {
 }
 
-App::~App()
+Application::~Application()
 {
-    JUG_ASSERT(g_pSingleton == this, "App instance mismatch.");
+    JUG_ASSERT(g_pSingleton == this, "Application instance mismatch.");
     g_pSingleton = nullptr;
 }
 
-App* App::GetInstance()
+Application& Application::GetSingleton()
 {
-    JUG_ASSERT(g_pSingleton, "App instance is not created yet.");
-    return g_pSingleton;
+    JUG_ASSERT(g_pSingleton, "Application instance is not created yet.");
+    return *g_pSingleton;
 }
 
-int App::Run(
+int Application::Run(
     const int _argc,
     char**    _argv)
 {
@@ -120,7 +120,6 @@ int App::Run(
         m_timer.Lap();
         m_deltaTimeSec = TimeCastF(m_timer.GetElapsedCount(), eTimeUnit::Sec);
         Update(m_deltaTimeSec);
-        UpdateInputState_();
     }
 
     Shutdown();
@@ -128,7 +127,7 @@ int App::Run(
     return m_returnCode;
 }
 
-void App::Quit()
+void Application::Quit()
 {
     m_bRunning = false;
 }
@@ -137,155 +136,28 @@ void App::Quit()
 //  Time
 // ===========================================
 
-float App::GetDeltaTimeSec() const
+float Application::GetDeltaTimeSec() const
 {
     return m_deltaTimeSec;
 }
 
-// ===========================================
-//  Keyboard
-// ===========================================
-
-bool App::IsKeyDown(
-    const eKey _key) const
-{
-    return m_bKeyDowns[static_cast<size_t>(_key)];
-}
-
-bool App::IsKeyDown(
-    const eKey           _key,
-    const Flags<eKeyMod> _mods,
-    const bool           _bExactMods) const
-{
-    return IsKeyDown(_key) && (_bExactMods ? m_keyMods == _mods : m_keyMods.HasAll(_mods));
-}
-
-bool App::IsKeyPressed(
-    const eKey _key) const
-{
-    const size_t index = static_cast<size_t>(_key);
-    return m_bKeyDowns[index] && !m_bPrevKeyDowns[index];
-}
-
-bool App::IsKeyPressed(
-    const eKey           _key,
-    const Flags<eKeyMod> _mods,
-    const bool           _bExactMods) const
-{
-    return IsKeyPressed(_key) && (_bExactMods ? m_keyMods == _mods : m_keyMods.HasAll(_mods));
-}
-
-bool App::IsKeyReleased(
-    const eKey _key) const
-{
-    const size_t index = static_cast<size_t>(_key);
-    return !m_bKeyDowns[index] && m_bPrevKeyDowns[index];
-}
-
-bool App::IsKeyReleased(
-    const eKey           _key,
-    const Flags<eKeyMod> _mods,
-    const bool           _bExactMods) const
-{
-    return IsKeyReleased(_key) && (_bExactMods ? m_keyMods == _mods : m_keyMods.HasAll(_mods));
-}
-
-Flags<eKeyMod> App::GetKeyMods() const
-{
-    return m_keyMods;
-}
-
-// ===========================================
-//  Mouse
-// ===========================================
-
-bool App::IsMouseDown(
-    const eMouse _button) const
-{
-    return m_bMouseDowns[static_cast<size_t>(_button)];
-}
-
-bool App::IsMousePressed(
-    const eMouse _button) const
-{
-    const size_t index = static_cast<size_t>(_button);
-    return m_bMouseDowns[index] && !m_bPrevMouseDowns[index];
-}
-
-bool App::IsMouseReleased(
-    const eMouse _button) const
-{
-    const size_t index = static_cast<size_t>(_button);
-    return !m_bMouseDowns[index] && m_bPrevMouseDowns[index];
-}
-
-VECTOR2 App::GetMousePos() const
-{
-    return m_mousePos;
-}
-
-VECTOR2 App::GetMouseDelta() const
-{
-    return m_mouseDelta;
-}
-
-VECTOR2 App::GetMouseWheelDelta() const
-{
-    return m_wheelDelta;
-}
-
-// ===========================================
-//  Gamepad
-// ===========================================
-
-bool App::IsGamepadConnected() const
-{
-    return m_pGamepadOrNull != nullptr;
-}
-
-bool App::IsGamepadButtonDown(
-    const eGamepadButton _button) const
-{
-    return m_bPadDowns[static_cast<size_t>(_button)];
-}
-
-bool App::IsGamepadButtonPressed(
-    const eGamepadButton _button) const
-{
-    const size_t index = static_cast<size_t>(_button);
-    return m_bPadDowns[index] && !m_bPrevPadDowns[index];
-}
-
-bool App::IsGamepadButtonReleased(
-    const eGamepadButton _button) const
-{
-    const size_t index = static_cast<size_t>(_button);
-    return !m_bPadDowns[index] && m_bPrevPadDowns[index];
-}
-
-float App::GetGamepadAxis(
-    const eGamepadAxis _axis) const
-{
-    return m_padAxes[static_cast<size_t>(_axis)];
-}
-
-Span<const String> App::GetCommandLineArgs() const
+Span<const String> Application::GetCommandLineArgs() const
 {
     return m_cmdArgs;
 }
 
-const AppDesc& App::GetDesc() const
+const ApplicationDesc& Application::GetDesc() const
 {
     return m_desc;
 }
 
-void App::SetReturnCode(
+void Application::SetReturnCode(
     const int _code)
 {
     m_returnCode = _code;
 }
 
-void App::InitSystems_() const
+void Application::InitSystems_() const
 {
     const String appName    = String { m_desc.appName };
     const String appVersion = String { m_desc.appVersion };
@@ -307,22 +179,19 @@ void App::InitSystems_() const
     }
 }
 
-void App::ShutdownSystems_()
+void Application::ShutdownSystems_() const
 {
-    if (m_pGamepadOrNull)
-    {
-        SDL_CloseGamepad(m_pGamepadOrNull);
-        m_pGamepadOrNull = nullptr;
-    }
-
     SDL_Quit();
 }
 
-void App::PollEvents_()
+void Application::PollEvents_()
 {
     SDL_Event msg;
     while (SDL_PollEvent(&msg))
     {
+        SystemEvent sdlEvent { msg };
+        DispatchEvent(sdlEvent);
+
         switch (msg.type)
         {
             case SDL_EVENT_QUIT:
@@ -630,7 +499,7 @@ void App::PollEvents_()
 
             case SDL_EVENT_CLIPBOARD_UPDATE:
             {
-                ClipboardUpdatedEvent event;
+                ClipboardUpdatedEvent event {};
                 DispatchEvent(event);
             }
             break;
@@ -641,156 +510,18 @@ void App::PollEvents_()
     }
 }
 
-void App::DispatchEvent(
+void Application::DispatchEvent(
     Event& _event)
 {
     EventDispatcher dispatcher { _event };
-    dispatcher.Dispatch<QuitEvent>(this, &App::OnQuitEvent_);
-    dispatcher.Dispatch<KeyDownEvent>(this, &App::OnKeyDownEvent_);
-    dispatcher.Dispatch<KeyUpEvent>(this, &App::OnKeyUpEvent_);
-    dispatcher.Dispatch<MouseMovedEvent>(this, &App::OnMouseMovedEvent_);
-    dispatcher.Dispatch<MouseButtonDownEvent>(this, &App::OnMouseButtonDownEvent_);
-    dispatcher.Dispatch<MouseButtonUpEvent>(this, &App::OnMouseButtonUpEvent_);
-    dispatcher.Dispatch<MouseWheelEvent>(this, &App::OnMouseWheelEvent_);
-    dispatcher.Dispatch<WindowFocusLostEvent>(this, &App::OnWindowFocusLostEvent_);
-    dispatcher.Dispatch<GamepadAddedEvent>(this, &App::OnGamepadAddedEvent_);
-    dispatcher.Dispatch<GamepadRemovedEvent>(this, &App::OnGamepadRemovedEvent_);
-    dispatcher.Dispatch<GamepadButtonDownEvent>(this, &App::OnGamepadButtonDownEvent_);
-    dispatcher.Dispatch<GamepadButtonUpEvent>(this, &App::OnGamepadButtonUpEvent_);
-    dispatcher.Dispatch<GamepadAxisMotionEvent>(this, &App::OnGamepadAxisMotionEvent_);
+    dispatcher.Dispatch<QuitEvent>(this, &Application::OnQuitEvent_);
     OnEvent(_event);
 }
 
-void App::UpdateInputState_()
-{
-    m_bPrevKeyDowns   = m_bKeyDowns;
-    m_bPrevMouseDowns = m_bMouseDowns;
-    m_bPrevPadDowns   = m_bPadDowns;
-
-    m_mouseDelta = VECTOR2 { 0.f, 0.f };
-    m_wheelDelta = VECTOR2 { 0.f, 0.f };
-}
-
-void App::OnQuitEvent_(
-    const QuitEvent& _event)
+void Application::OnQuitEvent_(
+    const QuitEvent&)
 {
     Quit();
-}
-
-void App::OnKeyDownEvent_(
-    const KeyDownEvent& _event)
-{
-    m_bKeyDowns[static_cast<size_t>(_event.GetKey())] = true;
-    m_keyMods                                         = _event.GetMods();
-}
-
-void App::OnKeyUpEvent_(
-    const KeyUpEvent& _event)
-{
-    m_bKeyDowns[static_cast<size_t>(_event.GetKey())] = false;
-    m_keyMods                                         = _event.GetMods();
-}
-
-void App::OnMouseMovedEvent_(
-    const MouseMovedEvent& _event)
-{
-    m_mousePos = VECTOR2 { _event.GetX(), _event.GetY() };
-    m_mouseDelta += VECTOR2 { _event.GetDeltaX(), _event.GetDeltaY() };
-}
-
-void App::OnMouseButtonDownEvent_(
-    const MouseButtonDownEvent& _event)
-{
-    m_bMouseDowns[static_cast<size_t>(_event.GetButton())] = true;
-    m_mousePos                                             = VECTOR2 { _event.GetX(), _event.GetY() };
-}
-
-void App::OnMouseButtonUpEvent_(
-    const MouseButtonUpEvent& _event)
-{
-    m_bMouseDowns[static_cast<size_t>(_event.GetButton())] = false;
-    m_mousePos                                             = VECTOR2 { _event.GetX(), _event.GetY() };
-}
-
-void App::OnMouseWheelEvent_(
-    const MouseWheelEvent& _event)
-{
-    m_wheelDelta += VECTOR2 { _event.GetScrollX(), _event.GetScrollY() };
-}
-
-void App::OnWindowFocusLostEvent_(
-    const WindowFocusLostEvent& _event)
-{
-    m_bKeyDowns.fill(false);
-    m_bMouseDowns.fill(false);
-    m_keyMods = {};
-}
-
-void App::OnGamepadAddedEvent_(
-    const GamepadAddedEvent& _event)
-{
-    if (m_pGamepadOrNull)
-    {
-        return;
-    }
-
-    m_pGamepadOrNull = SDL_OpenGamepad(_event.GetJoystickID());
-    if (!m_pGamepadOrNull)
-    {
-        JUG_CORE_LOG_WARN("SDL_OpenGamepad failed: {}", SDL_GetError());
-        return;
-    }
-
-    m_gamepadID = _event.GetJoystickID();
-}
-
-void App::OnGamepadRemovedEvent_(
-    const GamepadRemovedEvent& _event)
-{
-    if (!m_pGamepadOrNull || m_gamepadID != _event.GetJoystickID())
-    {
-        return;
-    }
-
-    SDL_CloseGamepad(m_pGamepadOrNull);
-    m_pGamepadOrNull = nullptr;
-    m_gamepadID      = 0;
-
-    m_bPadDowns.fill(false);
-    m_padAxes.fill(0.f);
-}
-
-void App::OnGamepadButtonDownEvent_(
-    const GamepadButtonDownEvent& _event)
-{
-    if (_event.GetJoystickID() != m_gamepadID)
-    {
-        return;
-    }
-
-    m_bPadDowns[static_cast<size_t>(_event.GetButton())] = true;
-}
-
-void App::OnGamepadButtonUpEvent_(
-    const GamepadButtonUpEvent& _event)
-{
-    if (_event.GetJoystickID() != m_gamepadID)
-    {
-        return;
-    }
-
-    m_bPadDowns[static_cast<size_t>(_event.GetButton())] = false;
-}
-
-void App::OnGamepadAxisMotionEvent_(
-    const GamepadAxisMotionEvent& _event)
-{
-    if (_event.GetJoystickID() != m_gamepadID)
-    {
-        return;
-    }
-
-    m_padAxes[static_cast<size_t>(_event.GetAxis())] = _event.GetValue();
 }
 
 }   // namespace jug

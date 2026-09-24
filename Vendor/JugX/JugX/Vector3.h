@@ -37,16 +37,11 @@ struct VECTOR<T, 3>
     }
 
 #ifdef JUG_SIMD_AVAILABLE
-
-    // =======================================================
-    //  SIMD
-    // =======================================================
-
     /* implicit */ JUG_MATH_API VECTOR(
         const simd::M128 _value)
         requires std::same_as<T, float>
     {
-        simd::StoreAligned(e.data(), _value);
+        simd::StoreFloat3(e.data(), _value);
     }
 
     [[nodiscard]] simd::M128 ToSIMD() const
@@ -54,12 +49,7 @@ struct VECTOR<T, 3>
     {
         return simd::LoadFloat3(e.data());
     }
-
 #endif
-
-    // =======================================================
-    //  Operators
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-() const
     {
@@ -137,10 +127,6 @@ struct VECTOR<T, 3>
         return v;
     }
 
-    // =======================================================
-    //  Assignment
-    // =======================================================
-
     JUG_MATH_API constexpr VECTOR& operator+=(
         const VECTOR _other)
     {
@@ -202,10 +188,6 @@ struct VECTOR<T, 3>
         return !(*this == _other);
     }
 
-    // =======================================================
-    //  Access
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](
         const size_t _index)
     {
@@ -228,9 +210,10 @@ struct VECTOR<T, 3>
         return e.data();
     }
 
-    // =======================================================
-    //  Fields
-    // =======================================================
+    JUG_MATH_API constexpr explicit operator VECTOR<T, 2>() const
+    {
+        return VECTOR<T, 2> { e[0], e[1] };
+    }
 
     const static VECTOR kZero;
     const static VECTOR kOne;
@@ -253,6 +236,30 @@ struct VECTOR<T, 3>
             T x;
             T y;
             T z;
+        };
+        struct
+        {
+            T width;
+            T height;
+            T depth;
+        };
+        struct
+        {
+            T pitch;
+            T yaw;
+            T roll;
+        };
+        struct
+        {
+            T r;
+            T g;
+            T b;
+        };
+        struct
+        {
+            T u;
+            T v;
+            T w;
         };
         ARRAY<T, 3> e;
     };

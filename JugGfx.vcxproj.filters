@@ -13,7 +13,7 @@
     <ClCompile Include="JugGfx\DXGI.cpp">
       <Filter>Graphics\DirectX</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\Native.cpp">
+    <ClCompile Include="JugGfx\GraphicsInclude.cpp">
       <Filter>Base</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\GeometryFactory.cpp">
@@ -43,14 +43,14 @@
     <ClCompile Include="JugGfx\ImGuiRenderer.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ImGui.cpp">
+    <ClCompile Include="JugGfx\ImGuiInclude.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\Error.cpp">
       <Filter>Error</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\Transform.cpp">
-      <Filter>Scene\Transform</Filter>
+    <ClCompile Include="JugGfx\ImGuiImage.cpp">
+      <Filter>ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -66,7 +66,7 @@
     <ClInclude Include="JugGfx\DXGI.h">
       <Filter>Graphics\DirectX</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\Native.h">
+    <ClInclude Include="JugGfx\GraphicsInclude.h">
       <Filter>Base</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\GeometryFactory.h">
@@ -96,14 +96,14 @@
     <ClInclude Include="JugGfx\ImGuiRenderer.h">
       <Filter>ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\ImGui.h">
+    <ClInclude Include="JugGfx\ImGuiInclude.h">
       <Filter>ImGui</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Error.h">
       <Filter>Error</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\Transform.h">
-      <Filter>Scene\Transform</Filter>
+    <ClInclude Include="JugGfx\ImGuiImage.h">
+      <Filter>ImGui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -130,18 +130,6 @@
     </Filter>
     <Filter Include="ImGui">
       <UniqueIdentifier>{48b64afd-cfd8-465c-96a0-ae51e3a59af1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Asset">
-      <UniqueIdentifier>{95d8cf73-1d88-4b23-af09-47ffe1e14bb5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Scene">
-      <UniqueIdentifier>{630d6343-18aa-4cc2-97cb-594c95832ba8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Scene\Transform">
-      <UniqueIdentifier>{2402047f-ad20-4b36-97f4-117a42d228ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Scene\Camera">
-      <UniqueIdentifier>{8f2d759e-56ab-4163-92ec-d2ef733cfa9c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

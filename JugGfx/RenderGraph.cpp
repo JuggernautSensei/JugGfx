@@ -89,7 +89,7 @@ namespace
         // 소유 중인 옛 핸들은 버려지므로 여기서 파괴한다. 같은 핸들이면 파괴하면 안 된다.
         if (it->second.bOwnership && it->second.handle != _handle)
         {
-            Graphics::GetInstance()->Destroy(it->second.handle);
+            Graphics::GetSingleton().Destroy(it->second.handle);
         }
 
         it->second.handle = _handle;
@@ -108,7 +108,7 @@ namespace
 
         if (it->second.bOwnership)
         {
-            Graphics::GetInstance()->Destroy(it->second.handle);
+            Graphics::GetSingleton().Destroy(it->second.handle);
         }
 
         _map.erase(it);
@@ -128,12 +128,12 @@ namespace
     void DestroyOwnedResources_(
         Map& _map)
     {
-        Graphics* pGfx = Graphics::GetInstance();
+        Graphics& gfx = Graphics::GetSingleton();
         for (auto& res: _map | std::views::values)
         {
             if (res.bOwnership && res.handle)
             {
-                pGfx->Destroy(res.handle);
+                gfx.Destroy(res.handle);
             }
         }
         _map.clear();
@@ -862,7 +862,7 @@ ResourceRef RenderGraph::ResolveResource_(
 // 이 단계가 끝나면 이후 검증·컬링·해저드는 문자열 근처도 가지 않는다.
 void RenderGraph::ResolveNames_()
 {
-    Graphics* pGfx = Graphics::GetInstance();
+    Graphics& gfx = Graphics::GetSingleton();
 
     m_resolved.resize(m_descs.size());
     for (size_t i = 0; i < m_descs.size(); ++i)
@@ -913,7 +913,7 @@ void RenderGraph::ResolveNames_()
         resolved.writeRefs.clear();
         if (resolved.fbh)
         {
-            const FrameBufferDesc& fb = pGfx->GetDesc(resolved.fbh);
+            const FrameBufferDesc& fb = gfx.GetDesc(resolved.fbh);
             for (uint32_t att = 0; att < fb.GetNumAttachments(); ++att)
             {
                 if (fb.atts[att].texh)
@@ -925,7 +925,7 @@ void RenderGraph::ResolveNames_()
             // 뷰포트를 명시하지 않았으면 첫 어태치먼트 크기를 쓴다.
             if (desc.bViewportFromFrameBuffer && fb.GetNumAttachments() > 0 && fb.atts[0].texh)
             {
-                const TextureDesc& tex = pGfx->GetDesc(fb.atts[0].texh);
+                const TextureDesc& tex = gfx.GetDesc(fb.atts[0].texh);
                 resolved.viewportX     = 0.f;
                 resolved.viewportY     = 0.f;
                 resolved.viewportW     = static_cast<float>(tex.width);
@@ -1018,7 +1018,7 @@ void RenderGraph::BuildCompiledPasses_()
 
             if (resolved.fbh)
             {
-                const FrameBufferDesc& fb = Graphics::GetInstance()->GetDesc(resolved.fbh);
+                const FrameBufferDesc& fb = Graphics::GetSingleton().GetDesc(resolved.fbh);
                 for (const BindDecl& decl: desc.readWrites)
                 {
                     const uint32_t stage = decl.slot >> kSlotShift;
@@ -1366,14 +1366,14 @@ void RenderGraph::Execute()
 {
     CompileIfNeed_();
 
-    Graphics* pGfx = Graphics::GetInstance();
+    Graphics& gfx = Graphics::GetSingleton();
 
     for (const CompiledPass& pass: m_compiledPasses)
     {
         const PassDesc&     desc     = m_descs[pass.descIndex];
         const ResolvedPass& resolved = m_resolved[pass.descIndex];
 
-        pGfx->PushDebugGroup(desc.name);
+        gfx.PushDebugGroup(desc.name);
 
         if (desc.type == ePass::Utility)
         {
@@ -1393,7 +1393,7 @@ void RenderGraph::Execute()
                 {
                     const uint32_t s = static_cast<uint32_t>(std::countr_zero(mask));
                     mask &= mask - 1;
-                    pGfx->SetTexture(kNullHandle, static_cast<eShader>(s >> kSlotShift), s & kSlotMask);
+                    gfx.SetTexture(kNullHandle, static_cast<eShader>(s >> kSlotShift), s & kSlotMask);
                 }
 
                 mask = pass.rwUnbindMask;
@@ -1401,68 +1401,68 @@ void RenderGraph::Execute()
                 {
                     const uint32_t s = static_cast<uint32_t>(std::countr_zero(mask));
                     mask &= mask - 1;
-                    pGfx->SetTextureRW(kNullHandle, static_cast<eShaderRW>(s >> kSlotShift), s & kSlotMask);
+                    gfx.SetTextureRW(kNullHandle, static_cast<eShaderRW>(s >> kSlotShift), s & kSlotMask);
                 }
 
                 if (pass.bUnbindFrameBuffer)
                 {
-                    pGfx->SetFrameBuffer(kNullHandle);
+                    gfx.SetFrameBuffer(kNullHandle);
                 }
 
                 // Set* 은 셰도우 캐시에만 쓰고 끝난다. 여기서 Touch 로 한 번 플러시해야
                 // 다음 바인드보다 먼저 언바인드가 GPU 에 나간다. 이게 빠지면 해저드 해결이 통째로 무의미해진다.
-                pGfx->Touch();
+                gfx.Touch();
             }
 
             // 컴퓨트는 프로그램만. 래스터 상태와 OM 은 렌더 패스에서만 세팅한다.
             if (desc.type == ePass::Compute)
             {
-                pGfx->SetComputeProgram(resolved.ph);
+                gfx.SetComputeProgram(resolved.ph);
             }
             else
             {
-                pGfx->SetProgram(resolved.ph);
-                pGfx->SetRenderState(desc.renderState);
-                pGfx->SetStencil(desc.frontStencil, desc.backStencil, desc.stencilRef);
+                gfx.SetProgram(resolved.ph);
+                gfx.SetRenderState(desc.renderState);
+                gfx.SetStencil(desc.frontStencil, desc.backStencil, desc.stencilRef);
 
                 for (const BlendDecl& blend: desc.blends)
                 {
-                    pGfx->SetBlend(blend.flags, blend.slot);
+                    gfx.SetBlend(blend.flags, blend.slot);
                 }
 
                 if (desc.bHasBlendFactor)
                 {
-                    pGfx->SetBlendFactor(desc.blendFactor);
+                    gfx.SetBlendFactor(desc.blendFactor);
                 }
 
-                pGfx->SetFrameBuffer(resolved.fbh);
-                pGfx->SetViewport(resolved.viewportX, resolved.viewportY, resolved.viewportW, resolved.viewportH);
+                gfx.SetFrameBuffer(resolved.fbh);
+                gfx.SetViewport(resolved.viewportX, resolved.viewportY, resolved.viewportW, resolved.viewportH);
 
                 if (desc.renderState & eRenderState::Scissor)
                 {
-                    pGfx->SetScissor(desc.scissorX, desc.scissorY, desc.scissorW, desc.scissorH);
+                    gfx.SetScissor(desc.scissorX, desc.scissorY, desc.scissorW, desc.scissorH);
                 }
 
                 for (const ClearDecl& clear: desc.renderTargetClears)
                 {
-                    pGfx->ClearRenderTarget(resolved.fbh, clear.color, clear.slot);
+                    gfx.ClearRenderTarget(resolved.fbh, clear.color, clear.slot);
                 }
 
                 if (desc.bClearDepth || desc.bClearStencil)
                 {
-                    pGfx->ClearDepthStencil(resolved.fbh, desc.bClearDepth, desc.bClearStencil, desc.depthClearValue, desc.stencilClearValue);
+                    gfx.ClearDepthStencil(resolved.fbh, desc.bClearDepth, desc.bClearStencil, desc.depthClearValue, desc.stencilClearValue);
                 }
             }
 
             // 컴파일 때 중복이 제거된 목록이다. 평탄 슬롯을 다시 (스테이지, 슬롯) 으로 편다.
             for (const CBufferBind& bind: pass.cbuffers)
             {
-                pGfx->SetConstantBuffer(bind.cbh, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
+                gfx.SetConstantBuffer(bind.cbh, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
             }
 
             for (const SamplerBind& bind: pass.samplers)
             {
-                pGfx->SetSampler(bind.state.flags, bind.state.border, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
+                gfx.SetSampler(bind.state.flags, bind.state.border, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
             }
 
             // SRV 바인드. 참조가 텍스처냐 스토리지 버퍼냐에 따라 호출이 갈린다.
@@ -1473,11 +1473,11 @@ void RenderGraph::Execute()
 
                 if (bind.ref.GetType() == eResource::Texture)
                 {
-                    pGfx->SetTexture(bind.ref.GetTextureHandle(), shader, slot);
+                    gfx.SetTexture(bind.ref.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    pGfx->SetBuffer(bind.ref.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBuffer(bind.ref.GetStorageBufferHandle(), shader, slot);
                 }
             }
 
@@ -1489,11 +1489,11 @@ void RenderGraph::Execute()
 
                 if (bind.ref.GetType() == eResource::Texture)
                 {
-                    pGfx->SetTextureRW(bind.ref.GetTextureHandle(), shader, slot);
+                    gfx.SetTextureRW(bind.ref.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    pGfx->SetBufferRW(bind.ref.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBufferRW(bind.ref.GetStorageBufferHandle(), shader, slot);
                 }
             }
 
@@ -1503,7 +1503,7 @@ void RenderGraph::Execute()
             }
         }
 
-        pGfx->PopDebugGroup();
+        gfx.PopDebugGroup();
     }
 }
 

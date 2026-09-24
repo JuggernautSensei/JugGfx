@@ -27,7 +27,7 @@ struct alignas(16) VECTOR<T, 4>
 {
     static_assert(std::is_integral_v<T> || std::is_same_v<T, float>, "Scalar must be integral or float type.");
 
-    JUG_MATH_API VECTOR() = default;
+    JUG_MATH_API  VECTOR() = default;
 
     JUG_MATH_API constexpr VECTOR(
         const T _x,
@@ -61,11 +61,6 @@ struct alignas(16) VECTOR<T, 4>
     }
 
 #ifdef JUG_SIMD_AVAILABLE
-
-    // =======================================================
-    //  SIMD
-    // =======================================================
-
     JUG_MATH_API /* implicit */ VECTOR(
         const simd::M128 _value)
         requires std::same_as<T, float>
@@ -78,12 +73,7 @@ struct alignas(16) VECTOR<T, 4>
     {
         return simd::LoadAligned(e.data());
     }
-
 #endif
-
-    // =======================================================
-    //  Operators
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-() const
     {
@@ -152,7 +142,7 @@ struct alignas(16) VECTOR<T, 4>
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Mul(ToSIMD(), _other.ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(simd::Mult(ToSIMD(), _other.ToSIMD()));
 
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
@@ -174,10 +164,6 @@ struct alignas(16) VECTOR<T, 4>
         }
         return v;
     }
-
-    // =======================================================
-    //  Assignment
-    // =======================================================
 
     JUG_MATH_API constexpr VECTOR& operator+=(
         const VECTOR _other)
@@ -242,10 +228,6 @@ struct alignas(16) VECTOR<T, 4>
         return !(*this == _other);
     }
 
-    // =======================================================
-    //  Access
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](
         const size_t _index)
     {
@@ -268,9 +250,15 @@ struct alignas(16) VECTOR<T, 4>
         return e.data();
     }
 
-    // =======================================================
-    //  Fields
-    // =======================================================
+    JUG_MATH_API constexpr explicit operator VECTOR<T, 3>() const
+    {
+        return VECTOR<T, 3> { e[0], e[1], e[2] };
+    }
+
+    JUG_MATH_API constexpr explicit operator VECTOR<T, 2>() const
+    {
+        return VECTOR<T, 2> { e[0], e[1] };
+    }
 
     const static VECTOR kZero;
     const static VECTOR kOne;
@@ -295,6 +283,13 @@ struct alignas(16) VECTOR<T, 4>
             T y;
             T z;
             T w;
+        };
+        struct
+        {
+            T r;
+            T g;
+            T b;
+            T a;
         };
         ARRAY<T, 4> e;
     };

@@ -167,7 +167,7 @@ inline void StoreFloat3(
 #        endif
 }
 
-[[nodiscard]] inline M128 Mul(
+[[nodiscard]] inline M128 Mult(
     const M128 _a,
     const M128 _b)
 {
@@ -197,7 +197,7 @@ inline void StoreFloat3(
 }
 
 // _a * _b + _c
-[[nodiscard]] inline M128 MulAdd(
+[[nodiscard]] inline M128 MultAdd(
     const M128 _a,
     const M128 _b,
     const M128 _c)
@@ -216,7 +216,7 @@ inline void StoreFloat3(
 }
 
 // _c - _a * _b
-[[nodiscard]] inline M128 NegMulAdd(
+[[nodiscard]] inline M128 NegMultAdd(
     const M128 _a,
     const M128 _b,
     const M128 _c)
@@ -234,7 +234,7 @@ inline void StoreFloat3(
     const M128  _a,
     const float _scalar)
 {
-    return Mul(_a, SetAll(_scalar));
+    return Mult(_a, SetAll(_scalar));
 }
 
 [[nodiscard]] inline M128 Negate(
@@ -652,14 +652,14 @@ namespace simd_detail
     const M128 _a,
     const M128 _b)
 {
-    return simd_detail::HorizontalSumAll(Mul(_a, _b));
+    return simd_detail::HorizontalSumAll(Mult(_a, _b));
 }
 
 [[nodiscard]] inline M128 Dot3V(
     const M128 _a,
     const M128 _b)
 {
-    return simd_detail::HorizontalSumAll(ZeroW(Mul(_a, _b)));
+    return simd_detail::HorizontalSumAll(ZeroW(Mult(_a, _b)));
 }
 
 [[nodiscard]] inline float Dot4(
@@ -684,7 +684,7 @@ namespace simd_detail
     const M128 b_zxy = Shuffle<2, 0, 1, 3>(_b);
     const M128 a_zxy = Shuffle<2, 0, 1, 3>(_a);
     const M128 b_yzx = Shuffle<1, 2, 0, 3>(_b);
-    const M128 ret   = Sub(Mul(a_yzx, b_zxy), Mul(a_zxy, b_yzx));
+    const M128 ret   = Sub(Mult(a_yzx, b_zxy), Mult(a_zxy, b_yzx));
     return ZeroW(ret);
 }
 
@@ -717,7 +717,7 @@ namespace simd_detail
 {
     const M128 lenSq   = Dot3V(_a, _a);
     const M128 nonZero = CmpGt(lenSq, Zero());
-    const M128 scaled  = Select(nonZero, Mul(_a, RSqrt(lenSq)), Zero());
+    const M128 scaled  = Select(nonZero, Mult(_a, RSqrt(lenSq)), Zero());
     const M128 wMask   = MaskXYZ();
     return Or(And(scaled, wMask), AndNot(wMask, _a));
 }
@@ -727,7 +727,7 @@ namespace simd_detail
 {
     const M128 lenSq   = Dot4V(_a, _a);
     const M128 nonZero = CmpGt(lenSq, Zero());
-    return Select(nonZero, Mul(_a, RSqrt(lenSq)), Zero());
+    return Select(nonZero, Mult(_a, RSqrt(lenSq)), Zero());
 }
 
 // =======================================================
@@ -739,7 +739,7 @@ namespace simd_detail
     const M128 _b,
     const M128 _t)
 {
-    return MulAdd(Sub(_b, _a), _t, _a);
+    return MultAdd(Sub(_b, _a), _t, _a);
 }
 
 [[nodiscard]] inline M128 Lerp(

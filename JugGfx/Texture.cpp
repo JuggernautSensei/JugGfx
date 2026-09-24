@@ -162,7 +162,7 @@ uint32_t CalcNumMips(
     return std::bit_width(Max(_width, _height, _depth));
 }
 
-CalcTextureSizeResult CalcTextureSize(
+VECTOR3U CalcTextureSize(
     const uint32_t _width,
     const uint32_t _height,
     const uint32_t _depth,

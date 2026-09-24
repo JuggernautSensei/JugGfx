@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="JugX\AABB.h" />
-    <ClInclude Include="JugX\AffineTransform.h" />
     <ClInclude Include="JugX\Align.h" />
     <ClInclude Include="JugX\Assert.h" />
     <ClInclude Include="JugX\Buffer.h" />
@@ -103,7 +102,7 @@
     <ClInclude Include="JugX\Vector2.h" />
     <ClInclude Include="JugX\Vector3.h" />
     <ClInclude Include="JugX\Vector4.h" />
-    <ClInclude Include="JugX\NativeOS.h" />
+    <ClInclude Include="JugX\OsInclude.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="JugX\Alloc.cpp" />
@@ -148,7 +147,6 @@
     <ClCompile Include="JugX\Timer.cpp" />
     <ClCompile Include="JugX\TimeStamp.cpp" />
     <ClCompile Include="JugX\AABB.cpp" />
-    <ClCompile Include="JugX\AffineTransform.cpp" />
     <ClCompile Include="JugX\Align.cpp" />
     <ClCompile Include="JugX\AxisAngle.cpp" />
     <ClCompile Include="JugX\Callable.cpp" />
@@ -195,7 +193,7 @@
     <ClCompile Include="JugX\Vector2.cpp" />
     <ClCompile Include="JugX\Vector3.cpp" />
     <ClCompile Include="JugX\Vector4.cpp" />
-    <ClCompile Include="JugX\NativeOS.cpp" />
+    <ClCompile Include="JugX\OsInclude.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JugX\Matrix.inl" />

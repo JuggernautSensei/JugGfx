@@ -10,7 +10,7 @@ class Graphics
     JUG_CLASS(Graphics, NO_COPY, NO_MOVE)
 
     // ===========================================
-    //  Extended ResourceRef
+    //  Extended Resource
     // ===========================================
 
     struct VertexBufferD3D11 : public VertexBufferDesc
@@ -200,7 +200,7 @@ public:
     explicit Graphics(bool _bEnableDebugLayer);
     ~Graphics();
 
-    [[nodiscard]] static Graphics* GetInstance();
+    [[nodiscard]] static Graphics& GetSingleton();
 
     // ===========================================
     //  System
@@ -400,6 +400,9 @@ public:
         uint32_t       _height,
         eTextureFormat _format,
         uint32_t       _numBuffers);
+
+    [[nodiscard]] FrameBufferHandle FindFrameBufferOrNull(
+        SDL_WindowID _wndID);
 
     void ResizeFrameBuffer(
         FrameBufferHandle _swapChainFbh,
@@ -828,11 +831,11 @@ private:
 
 }   // namespace jug
 
-#define JUG_GFX_DESTROY(_handle)                              \
-    JUG_BEGIN_MACRO_BLOCK                                     \
-    if (_handle != jug::kNullHandle)                          \
-    {                                                         \
-        jug::Graphics::GetInstance()->Destroy(_handle); \
-        _handle = jug::kNullHandle;                           \
-    }                                                         \
+#define JUG_GFX_DESTROY(_handle)                       \
+    JUG_BEGIN_MACRO_BLOCK                              \
+    if (_handle != jug::kNullHandle)                   \
+    {                                                  \
+        jug::Graphics::GetSingleton().Destroy(_handle); \
+        _handle = jug::kNullHandle;                    \
+    }                                                  \
     JUG_END_MACRO_BLOCK

@@ -4,9 +4,6 @@
     <ClInclude Include="JugX\AABB.h">
       <Filter>Math\Geomtry</Filter>
     </ClInclude>
-    <ClInclude Include="JugX\AffineTransform.h">
-      <Filter>Math\Geomtry</Filter>
-    </ClInclude>
     <ClInclude Include="JugX\Callable.h">
       <Filter>Callable</Filter>
     </ClInclude>
@@ -244,7 +241,7 @@
     <ClInclude Include="JugX\KeyCode.h">
       <Filter>Application</Filter>
     </ClInclude>
-    <ClInclude Include="JugX\NativeOS.h">
+    <ClInclude Include="JugX\OsInclude.h">
       <Filter>OS</Filter>
     </ClInclude>
     <ClInclude Include="JugX\OS.h">
@@ -334,9 +331,6 @@
       <Filter>Base</Filter>
     </ClCompile>
     <ClCompile Include="JugX\AABB.cpp">
-      <Filter>Math\Geomtry</Filter>
-    </ClCompile>
-    <ClCompile Include="JugX\AffineTransform.cpp">
       <Filter>Math\Geomtry</Filter>
     </ClCompile>
     <ClCompile Include="JugX\Align.cpp">
@@ -501,7 +495,7 @@
     <ClCompile Include="JugX\KeyCode.cpp">
       <Filter>Application</Filter>
     </ClCompile>
-    <ClCompile Include="JugX\NativeOS.cpp">
+    <ClCompile Include="JugX\OsInclude.cpp">
       <Filter>OS</Filter>
     </ClCompile>
     <ClCompile Include="JugX\OS.cpp">

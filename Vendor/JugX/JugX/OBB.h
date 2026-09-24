@@ -1,9 +1,8 @@
 ﻿#pragma once
 #include "AABB.h"
-#include "AffineTransform.h"
 #include "Corner.h"
 #include "EnumArray.h"
-#include "Quaternion.h"
+#include "Matrix.h"
 #include "TypeTraits.h"
 #include "Vector.h"
 
@@ -12,37 +11,37 @@ namespace jug
 
 struct OBB
 {
-    JUG_MATH_API constexpr OBB() = default;
+    JUG_MATH_API OBB() = default;
+
     JUG_MATH_API constexpr explicit OBB(
-        const AFFINE_TRANSFORM& _transform)
-        : transform(_transform)
+        const MATRIX& _mtx)
+        : mtx(_mtx)
     {
     }
-
-    // ========================================================
-    //  Factory
-    // ========================================================
 
     [[nodiscard]] JUG_MATH_API static constexpr OBB MakeFromAABB(
         const AABB& _aabb)
     {
         return OBB {
-            AFFINE_TRANSFORM { _aabb.extends, MathConstants<QUATERNION>::kIdentity, _aabb.center }
+            MATRIX { VECTOR4 { _aabb.extends.e[0], 0.f, 0.f, 0.f },
+                    VECTOR4 { 0.f, _aabb.extends.e[1], 0.f, 0.f },
+                    VECTOR4 { 0.f, 0.f, _aabb.extends.e[2], 0.f },
+                    VECTOR4 { _aabb.center.e[0], _aabb.center.e[1], _aabb.center.e[2], 1.f } }
         };
     }
-    
-    // =======================================================
-    //  Utils
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR3 GetCenter() const
     {
-        return transform.translation;
+        return VECTOR3 { mtx.r[3].e[0], mtx.r[3].e[1], mtx.r[3].e[2] };
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR3 GetExtents() const
     {
-        return Abs(transform.scale);
+        return VECTOR3 {
+            Length(VECTOR3 { mtx.r[0].e[0], mtx.r[0].e[1], mtx.r[0].e[2] }),
+            Length(VECTOR3 { mtx.r[1].e[0], mtx.r[1].e[1], mtx.r[1].e[2] }),
+            Length(VECTOR3 { mtx.r[2].e[0], mtx.r[2].e[1], mtx.r[2].e[2] })
+        };
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetWidth() const
@@ -62,9 +61,9 @@ struct OBB
 
     [[nodiscard]] JUG_MATH_API constexpr DIRECT_ENUM_ARRAY<eCorner, VECTOR3> CalcCorners() const
     {
-        const VECTOR3 axisX = transform.GetAxisX() * transform.scale.e[0];
-        const VECTOR3 axisY = transform.GetAxisY() * transform.scale.e[1];
-        const VECTOR3 axisZ = transform.GetAxisZ() * transform.scale.e[2];
+        const VECTOR3 axisX = VECTOR3 { mtx.r[0].e[0], mtx.r[0].e[1], mtx.r[0].e[2] };
+        const VECTOR3 axisY = VECTOR3 { mtx.r[1].e[0], mtx.r[1].e[1], mtx.r[1].e[2] };
+        const VECTOR3 axisZ = VECTOR3 { mtx.r[2].e[0], mtx.r[2].e[1], mtx.r[2].e[2] };
         const VECTOR3 c     = GetCenter();
 
         DIRECT_ENUM_ARRAY<eCorner, VECTOR3> corners;
@@ -79,14 +78,10 @@ struct OBB
         return corners;
     }
 
-    // =======================================================
-    //  Fields
-    // =======================================================
-
     const static OBB kZero;
     const static OBB kUnit;
 
-    AFFINE_TRANSFORM transform;
+    MATRIX mtx;
 };
 
 static_assert(PodT<OBB>, "OBB must be POD type.");
@@ -95,8 +90,8 @@ static_assert(PodT<OBB>, "OBB must be POD type.");
 //  Constants
 // ========================================================
 
-inline constexpr OBB OBB::kZero = OBB { Zero<AFFINE_TRANSFORM>() };
-inline constexpr OBB OBB::kUnit = OBB { Identity<AFFINE_TRANSFORM>() };
+inline constexpr OBB OBB::kZero = OBB { Zero<MATRIX>() };
+inline constexpr OBB OBB::kUnit = OBB { Identity<MATRIX>() };
 
 template<>
 struct MathConstants<OBB>
@@ -106,14 +101,14 @@ struct MathConstants<OBB>
 };
 
 // ========================================================
-//  Operators
+//  Method
 // ========================================================
 
-[[nodiscard]] JUG_MATH_API constexpr OBB Transform(
-    const OBB&              _obb,
-    const AFFINE_TRANSFORM& _transform)
+[[nodiscard]] JUG_MATH_API constexpr OBB Xform(
+    const OBB&    _obb,
+    const MATRIX& _mtx)
 {
-    return OBB { _obb.transform * _transform };
+    return OBB { _obb.mtx * _mtx };
 }
 
 }   // namespace jug

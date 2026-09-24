@@ -143,6 +143,7 @@ public:
         Trim_();
     }
 
+    // 승격만
     void Touch(
         const K& _key)
     {
@@ -151,6 +152,7 @@ public:
         Touch_(it->second);
     }
 
+    // 조회 후 승격
     [[nodiscard]] Iterator Find(
         const K& _key)
     {
@@ -160,7 +162,7 @@ public:
             return m_list.end();
         }
 
-        // 찾고 MRU로 승격
+        // 승격
         Touch_(it->second);
         return it->second;
     }

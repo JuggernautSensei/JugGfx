@@ -35,10 +35,10 @@ Result<Buffer<std::byte>> Image::Read(
     JUG_ASSERT(_layer < m_numLayers, "Layer index out of bounds.\n");
     JUG_ASSERT(_mip < m_numMips, "Mip index out of bounds.\n");
 
-    const OIIO::ImageSpec& spec = m_pImage->spec();
-    const auto [w, h, d]        = CalcTextureSize(spec.width, spec.height, spec.depth, _mip);
-    const uint32_t numPixels    = w * h * d;
-    const uint32_t byteWidth    = spec.nchannels * numPixels * static_cast<uint32_t>(spec.format.size());
+    const OIIO::ImageSpec& spec      = m_pImage->spec();
+    const VECTOR3U         size      = CalcTextureSize(spec.width, spec.height, spec.depth, _mip);
+    const uint32_t         numPixels = size.width * size.height * size.depth;
+    const uint32_t         byteWidth = spec.nchannels * numPixels * static_cast<uint32_t>(spec.format.size());
 
     Buffer<std::byte> buf(byteWidth);
     if (!m_pImage->read_image(static_cast<int>(_layer), static_cast<int>(_mip), 0, spec.nchannels, spec.format, buf.GetPtr()))

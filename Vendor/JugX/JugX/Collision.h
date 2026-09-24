@@ -50,9 +50,13 @@ namespace collision_detail
         BOX box;
         box.center  = _obb.GetCenter();
         box.extents = _obb.GetExtents();
-        box.axes[0] = _obb.transform.GetAxisX();
-        box.axes[1] = _obb.transform.GetAxisY();
-        box.axes[2] = _obb.transform.GetAxisZ();
+
+        const VECTOR3 invExtents = RcpSafe(box.extents);
+        for (size_t i = 0; i < 3; ++i)
+        {
+            const VECTOR4& row = _obb.mtx.r[i];
+            box.axes[i]        = VECTOR3 { row.e[0], row.e[1], row.e[2] } * invExtents.e[i];
+        }
         return box;
     }
 
@@ -142,47 +146,47 @@ namespace collision_detail
             }
         }
 
-        // A0 render_graph_detail B0
+        // A0 × B0
         if (Abs(t[2] * r[1][0] - t[1] * r[2][0]) > ea.e[1] * absR[2][0] + ea.e[2] * absR[1][0] + eb.e[1] * absR[0][2] + eb.e[2] * absR[0][1])
         {
             return false;
         }
-        // A0 render_graph_detail B1
+        // A0 × B1
         if (Abs(t[2] * r[1][1] - t[1] * r[2][1]) > ea.e[1] * absR[2][1] + ea.e[2] * absR[1][1] + eb.e[0] * absR[0][2] + eb.e[2] * absR[0][0])
         {
             return false;
         }
-        // A0 render_graph_detail B2
+        // A0 × B2
         if (Abs(t[2] * r[1][2] - t[1] * r[2][2]) > ea.e[1] * absR[2][2] + ea.e[2] * absR[1][2] + eb.e[0] * absR[0][1] + eb.e[1] * absR[0][0])
         {
             return false;
         }
-        // A1 render_graph_detail B0
+        // A1 × B0
         if (Abs(t[0] * r[2][0] - t[2] * r[0][0]) > ea.e[0] * absR[2][0] + ea.e[2] * absR[0][0] + eb.e[1] * absR[1][2] + eb.e[2] * absR[1][1])
         {
             return false;
         }
-        // A1 render_graph_detail B1
+        // A1 × B1
         if (Abs(t[0] * r[2][1] - t[2] * r[0][1]) > ea.e[0] * absR[2][1] + ea.e[2] * absR[0][1] + eb.e[0] * absR[1][2] + eb.e[2] * absR[1][0])
         {
             return false;
         }
-        // A1 render_graph_detail B2
+        // A1 × B2
         if (Abs(t[0] * r[2][2] - t[2] * r[0][2]) > ea.e[0] * absR[2][2] + ea.e[2] * absR[0][2] + eb.e[0] * absR[1][1] + eb.e[1] * absR[1][0])
         {
             return false;
         }
-        // A2 render_graph_detail B0
+        // A2 × B0
         if (Abs(t[1] * r[0][0] - t[0] * r[1][0]) > ea.e[0] * absR[1][0] + ea.e[1] * absR[0][0] + eb.e[1] * absR[2][2] + eb.e[2] * absR[2][1])
         {
             return false;
         }
-        // A2 render_graph_detail B1
+        // A2 × B1
         if (Abs(t[1] * r[0][1] - t[0] * r[1][1]) > ea.e[0] * absR[1][1] + ea.e[1] * absR[0][1] + eb.e[0] * absR[2][2] + eb.e[2] * absR[2][0])
         {
             return false;
         }
-        // A2 render_graph_detail B2
+        // A2 × B2
         if (Abs(t[1] * r[0][2] - t[0] * r[1][2]) > ea.e[0] * absR[1][2] + ea.e[1] * absR[0][2] + eb.e[0] * absR[2][1] + eb.e[1] * absR[2][0])
         {
             return false;
@@ -266,7 +270,7 @@ namespace collision_detail
         const VECTOR3 f1 = v2 - v1;
         const VECTOR3 f2 = v0 - v2;
 
-        // 9축: 박스 축 render_graph_detail 삼각형 변. 박스 축이 단위 기저이므로 외적을 전개해 둔다.
+        // 9축: 박스 축 × 삼각형 변. 박스 축이 단위 기저이므로 외적을 전개해 둔다.
         const VECTOR3 a00 { 0.f, -f0.e[2], f0.e[1] };
         const VECTOR3 a01 { 0.f, -f1.e[2], f1.e[1] };
         const VECTOR3 a02 { 0.f, -f2.e[2], f2.e[1] };

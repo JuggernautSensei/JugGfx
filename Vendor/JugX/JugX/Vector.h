@@ -30,7 +30,7 @@ template<typename V>
 concept FloatingPointVectorT = VectorT<V> && std::floating_point<typename VectorTraits<V>::Scalar>;
 
 // =======================================================
-//  Basic
+//  Method
 // =======================================================
 
 template<VectorT V>
@@ -56,11 +56,12 @@ template<VectorT V>
 
 template<FloatingPointVectorT V>
 [[nodiscard]] JUG_MATH_API constexpr bool IsZeroApprox(
-    const V _v)
+    const V     _v,
+    const float _epsilon = kEpsilon)
 {
     for (size_t i = 0; i < V::kDim; ++i)
     {
-        if (!IsZeroApprox(_v.e[i]))
+        if (!IsZeroApprox(_v.e[i], _epsilon))
         {
             return false;
         }
@@ -70,12 +71,13 @@ template<FloatingPointVectorT V>
 
 template<FloatingPointVectorT V>
 [[nodiscard]] JUG_MATH_API constexpr bool IsEqualApprox(
-    const V _x,
-    const V _y)
+    const V     _x,
+    const V     _y,
+    const float _epsilon = kEpsilon)
 {
     for (size_t i = 0; i < V::kDim; ++i)
     {
-        if (!IsEqualApprox(_x.e[i], _y.e[i]))
+        if (!IsEqualApprox(_x.e[i], _y.e[i], _epsilon))
         {
             return false;
         }
@@ -195,10 +197,6 @@ template<FloatingPointVectorT V>
     return ret;
 }
 
-// =======================================================
-//  Operators
-// =======================================================
-
 template<VectorT V>
 [[nodiscard]] JUG_MATH_API constexpr float Dot(
     const V _x,
@@ -280,10 +278,6 @@ template<FloatingPointVectorT V>
     return IsZeroApprox(Cross(_x, _y));
 }   // namespace jug
 
-// =======================================================
-//  Distance
-// =======================================================
-
 template<VectorT V>
 [[nodiscard]] JUG_MATH_API constexpr float DistanceSq(
     const V _x,
@@ -299,10 +293,6 @@ template<FloatingPointVectorT V>
 {
     return Length(_x - _y);
 }
-
-// =======================================================
-//  Interpolation
-// =======================================================
 
 template<VectorT V>
 [[nodiscard]] JUG_MATH_API constexpr V Lerp(
@@ -358,26 +348,18 @@ template<FloatingPointVectorT V>
 
 #ifdef JUG_SIMD_AVAILABLE
 
-// =======================================================
-//  VECTOR3
-// =======================================================
-
 [[nodiscard]] constexpr VECTOR3 Normalize(
     const VECTOR3 _v)
 {
     if (!std::is_constant_evaluated())
     {
-        const simd::M128 value = simd::LoadAligned(_v.e.data());
+        const simd::M128 value = _v.ToSIMD();
         const simd::M128 lenSq = simd::Dot4V(value, value);
         const simd::M128 valid = simd::CmpGe(lenSq, simd::SetAll(kEpsilon));
         return simd::And(simd::Div(value, simd::Sqrt(lenSq)), valid);
     }
     return Normalize<VECTOR3>(_v);
 }
-
-// =======================================================
-//  VECTOR4
-// =======================================================
 
 [[nodiscard]] constexpr float Dot(
     const VECTOR4 _x,
@@ -491,24 +473,26 @@ template<FloatingPointVectorT V>
 
 [[nodiscard]] constexpr bool IsEqualApprox(
     const VECTOR4 _x,
-    const VECTOR4 _y)
+    const VECTOR4 _y,
+    const float   _epsilon = kEpsilon)
 {
     if (!std::is_constant_evaluated())
     {
         const simd::M128 diff = simd::Abs(simd::Sub(_x.ToSIMD(), _y.ToSIMD()));
-        return simd::AllTrue(simd::CmpLt(diff, simd::SetAll(kEpsilon)));
+        return simd::AllTrue(simd::CmpLt(diff, simd::SetAll(_epsilon)));
     }
-    return IsEqualApprox<VECTOR4>(_x, _y);
+    return IsEqualApprox<VECTOR4>(_x, _y, _epsilon);
 }
 
 [[nodiscard]] constexpr bool IsZeroApprox(
-    const VECTOR4 _v)
+    const VECTOR4 _v,
+    const float   _epsilon = kEpsilon)
 {
     if (!std::is_constant_evaluated())
     {
-        return simd::AllTrue(simd::CmpLt(simd::Abs(_v.ToSIMD()), simd::SetAll(kEpsilon)));
+        return simd::AllTrue(simd::CmpLt(simd::Abs(_v.ToSIMD()), simd::SetAll(_epsilon)));
     }
-    return IsZeroApprox<VECTOR4>(_v);
+    return IsZeroApprox<VECTOR4>(_v, _epsilon);
 }
 
 #endif   // JUG_MATH_SIMD

@@ -12,7 +12,7 @@
     "imguizmo",
     {
       "name": "imgui",
-      "features": [ "docking-experimental" ]
+      "features": [ "docking-experimental", "sdl3-binding" ]
     }
   ]
 }

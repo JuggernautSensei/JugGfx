@@ -1,5 +1,60 @@
 ﻿#include "pch.h"
-#include "ImGui.h"
+#include "ImGuiImage.h"
+
+namespace jug
+{
+
+namespace
+{
+    constexpr uint32_t kTexIdMipShift   = 32;
+    constexpr uint32_t kTexIdFaceShift  = 37;
+    constexpr uint32_t kTexIdLayerShift = 40;
+    constexpr uint64_t kTexIdMipMask    = (1ull << 5) - 1;
+    constexpr uint64_t kTexIdFaceMask   = (1ull << 3) - 1;
+    constexpr uint64_t kTexIdLayerMask  = (1ull << 23) - 1;
+    constexpr uint64_t kTexIdValidBit   = 1ull << 63;
+}   // namespace
+
+uint64_t ToTextureID(
+    const TextureHandle _texh)
+{
+    ImGuiTexture texture = {};
+    texture.texh         = _texh;
+    return ToTextureID(texture);
+}
+
+uint64_t ToTextureID(
+    ImGuiTexture _texture)
+{
+    static_assert(sizeof(ImTextureID) >= sizeof(uint64_t), "ImGuiRenderer requires a 64-bit ImTextureID.");
+    JUG_ASSERT(_texture.texh, "ToTextureID requires a valid texture handle.");
+
+    const uint64_t mip = _texture.mip;
+    JUG_ASSERT(mip <= kTexIdMipMask, "ImGuiTexture::mip is out of the packable range.");
+    JUG_ASSERT(_texture.layer <= kTexIdLayerMask, "ImGuiTexture::layer is out of the packable range.");
+
+    uint64_t id = kTexIdValidBit;
+    id |= static_cast<uint64_t>(_texture.texh.GetValue());
+    id |= (mip & kTexIdMipMask) << kTexIdMipShift;
+    id |= (static_cast<uint64_t>(_texture.face) & kTexIdFaceMask) << kTexIdFaceShift;
+    id |= (static_cast<uint64_t>(_texture.layer) & kTexIdLayerMask) << kTexIdLayerShift;
+    return id;
+}
+
+ImGuiTexture FromTextureID(
+    const uint64_t _id)
+{
+    JUG_ASSERT(_id & kTexIdValidBit, "FromTextureID requires an id made by ToTextureID.");
+
+    ImGuiTexture texture = {};
+    texture.texh         = TextureHandle { static_cast<uint32_t>(_id) };
+    texture.mip          = (_id >> kTexIdMipShift) & kTexIdMipMask;
+    texture.face         = static_cast<eCubeFace>((_id >> kTexIdFaceShift) & kTexIdFaceMask);
+    texture.layer        = static_cast<uint32_t>((_id >> kTexIdLayerShift) & kTexIdLayerMask);
+    return texture;
+}
+
+}   // namespace jug
 
 namespace ImGui
 {

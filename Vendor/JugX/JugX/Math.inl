@@ -251,14 +251,14 @@ template<std::integral T>
     return _deg * kDeg2Rad;
 }
 
-[[nodiscard]] JUG_MATH_API constexpr bool IsZeroApprox(const float _x)
+[[nodiscard]] JUG_MATH_API constexpr bool IsZeroApprox(const float _x, const float _epsilon)
 {
-    return Abs(_x) < kEpsilon;
+    return Abs(_x) < _epsilon;
 }
 
-[[nodiscard]] JUG_MATH_API constexpr bool IsEqualApprox(const float _x, const float _y)
+[[nodiscard]] JUG_MATH_API constexpr bool IsEqualApprox(const float _x, const float _y, const float _epsilon)
 {
-    return IsZeroApprox(_x - _y);
+    return IsZeroApprox(_x - _y, _epsilon);
 }
 
 [[nodiscard]] JUG_MATH_API constexpr float Trunc(const float _x)

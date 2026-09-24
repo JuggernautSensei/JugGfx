@@ -13,7 +13,7 @@ struct VECTOR;
 template<VectorScalarT T>
 struct VECTOR<T, 2>
 {
-    JUG_MATH_API VECTOR() = default;
+    JUG_MATH_API  VECTOR() = default;
 
     JUG_MATH_API constexpr VECTOR(
         const T _x,
@@ -28,10 +28,6 @@ struct VECTOR<T, 2>
         : e { _value, _value }
     {
     }
-
-    // =======================================================
-    //  Operators
-    // =======================================================
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-() const
     {
@@ -109,10 +105,6 @@ struct VECTOR<T, 2>
         return v;
     }
 
-    // =======================================================
-    //  Assignment
-    // =======================================================
-
     JUG_MATH_API constexpr VECTOR& operator+=(
         const VECTOR _other)
     {
@@ -174,10 +166,6 @@ struct VECTOR<T, 2>
         return !(*this == _other);
     }
 
-    // =======================================================
-    //  Access
-    // =======================================================
-
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](
         const size_t _index)
     {
@@ -200,10 +188,6 @@ struct VECTOR<T, 2>
         return e.data();
     }
 
-    // =======================================================
-    //  Fields
-    // =======================================================
-
     const static VECTOR kZero;
     const static VECTOR kOne;
     const static VECTOR kRight;
@@ -222,6 +206,16 @@ struct VECTOR<T, 2>
         {
             T x;
             T y;
+        };
+        struct
+        {
+            T width;
+            T height;
+        };
+        struct
+        {
+            T u;
+            T v;
         };
         ARRAY<T, 2> e;
     };

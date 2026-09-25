@@ -10,9 +10,9 @@ VertexLayout& VertexLayout::Add(
     const uint32_t               _num,
     const bool                   _bNormalized)
 {
-    JUG_ASSERT(m_numAttribs < CountOf<eVertexAttribute>(), "VertexLayout::Add() - Too many attributes");
-    JUG_ASSERT(_num > 0 && _num <= 4, "VertexLayout::Add() - Invalid number of components");
-    JUG_ASSERT(!Has(_attrib), "VertexLayout::Add() - Attribute already exists");
+    JUG_ASSERT(m_numAttribs < CountOf<eVertexAttribute>(), "VertexLayout::VectorAdd() - Too many attributes");
+    JUG_ASSERT(_num > 0 && _num <= 4, "VertexLayout::VectorAdd() - Invalid number of components");
+    JUG_ASSERT(!Has(_attrib), "VertexLayout::VectorAdd() - Attribute already exists");
 
     VertexAttribute attrib = {};
     attrib.attrib          = _attrib;

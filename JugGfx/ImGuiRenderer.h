@@ -49,16 +49,15 @@ private:
     String            m_iniPath   = {};
     FrameBufferHandle m_fbh       = kNullHandle;
 
-    // renderer
     VertexLayout         m_vl          = {};
     ProgramHandle        m_ph          = kNullHandle;
-    ConstantBufferHandle m_frameCbh    = kNullHandle;   // b0: projection, linearize
-    ConstantBufferHandle m_textureCbh  = kNullHandle;   // b1: texture view (type, mip, layer, face)
+    ConstantBufferHandle m_frameCbh    = kNullHandle;
+    ConstantBufferHandle m_textureCbh  = kNullHandle;
     TextureHandle        m_fontTexh    = kNullHandle;
     VertexBufferHandle   m_vbh         = kNullHandle;
     IndexBufferHandle    m_ibh         = kNullHandle;
-    uint32_t             m_numVertices = 0;   // vertex buffer capacity
-    uint32_t             m_numIndices  = 0;   // index buffer capacity
+    uint32_t             m_numVertices = 0;
+    uint32_t             m_numIndices  = 0;
 };
 
 }   // namespace jug

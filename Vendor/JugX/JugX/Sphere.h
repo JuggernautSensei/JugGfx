@@ -47,11 +47,9 @@ struct MathConstants<SPHERE>
     const SPHERE& _sphere,
     const MATRIX& _mtx)
 {
-    const VECTOR3 p  = XformPoint(_sphere.center, _mtx);
-    const float   sx = Length(XformVector(UnitX<VECTOR3>(), _mtx));
-    const float   sy = Length(XformVector(UnitY<VECTOR3>(), _mtx));
-    const float   sz = Length(XformVector(UnitZ<VECTOR3>(), _mtx));
-    return SPHERE { p, _sphere.radius * Max(sx, sy, sz) };
+    // XformVector(UnitX) == row0 이므로 행 길이의 최대값이 최대 스케일이다.
+    const float scaleSq = Max(LengthSq(_mtx[0].ToVector3()), LengthSq(_mtx[1].ToVector3()), LengthSq(_mtx[2].ToVector3()));
+    return SPHERE { XformPoint(_sphere.center, _mtx), _sphere.radius * Sqrt(scaleSq) };
 }
 
 }   // namespace jug

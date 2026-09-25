@@ -4,30 +4,28 @@
 #include "SIMD.h"
 #include "Vector3.h"
 
-namespace jug
-{
-
 #ifdef JUG_SIMD_AVAILABLE
-#    define JUG_VECTOR4_SIMD_PATH(_expr)       \
-        JUG_BEGIN_MACRO_BLOCK                  \
-        if constexpr (std::same_as<T, float>)  \
-        {                                      \
-            if (!std::is_constant_evaluated()) \
-            {                                  \
-                return (_expr);                \
-            }                                  \
-        }                                      \
+#    define JUG_VECTOR4_SIMD_PATH(_expr)           \
+        JUG_BEGIN_MACRO_BLOCK                      \
+        if constexpr (std::is_floating_point_v<T>) \
+        {                                          \
+            if (!std::is_constant_evaluated())     \
+            {                                      \
+                return (_expr);                    \
+            }                                      \
+        }                                          \
         JUG_END_MACRO_BLOCK
 #else
 #    define JUG_VECTOR4_SIMD_PATH(_expr)
 #endif
 
+namespace jug
+{
+
 template<VectorScalarT T>
 struct alignas(16) VECTOR<T, 4>
 {
-    static_assert(std::is_integral_v<T> || std::is_same_v<T, float>, "Scalar must be integral or float type.");
-
-    JUG_MATH_API  VECTOR() = default;
+    JUG_MATH_API VECTOR() = default;
 
     JUG_MATH_API constexpr VECTOR(
         const T _x,
@@ -42,14 +40,14 @@ struct alignas(16) VECTOR<T, 4>
         const VECTOR<T, 2> _xy,
         const T            _z,
         const T            _w)
-        : e { _xy.e[0], _xy.e[1], _z, _w }
+        : e { _xy[0], _xy[1], _z, _w }
     {
     }
 
     JUG_MATH_API constexpr VECTOR(
         const VECTOR<T, 3> _xyz,
         const T            _w)
-        : e { _xyz.e[0], _xyz.e[1], _xyz.e[2], _w }
+        : e { _xyz[0], _xyz[1], _xyz[2], _w }
     {
     }
 
@@ -61,15 +59,17 @@ struct alignas(16) VECTOR<T, 4>
     }
 
 #ifdef JUG_SIMD_AVAILABLE
-    JUG_MATH_API /* implicit */ VECTOR(
+    [[nodiscard]] static VECTOR MakeFromM128(
         const simd::M128 _value)
-        requires std::same_as<T, float>
+        requires std::is_floating_point_v<T>
     {
-        simd::StoreAligned(e.data(), _value);
+        VECTOR ret;
+        simd::StoreAligned(ret.e.data(), _value);
+        return ret;
     }
 
-    [[nodiscard]] simd::M128 ToSIMD() const
-        requires std::same_as<T, float>
+    [[nodiscard]] simd::M128 ToM128() const
+        requires std::is_floating_point_v<T>
     {
         return simd::LoadAligned(e.data());
     }
@@ -77,92 +77,98 @@ struct alignas(16) VECTOR<T, 4>
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-() const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Negate(ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Negate(ToM128())));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] = -v.e[i];
+            ret[i] = -ret[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator+(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Add(ToSIMD(), _other.ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Add(ToM128(), _other.ToM128())));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] += _other.e[i];
+            ret[i] += _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Sub(ToSIMD(), _other.ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Sub(ToM128(), _other.ToM128())));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] -= _other.e[i];
+            ret[i] -= _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
         const T _scalar) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Scale(ToSIMD(), _scalar));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Scale(ToM128(), _scalar)));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _scalar;
+            ret[i] *= _scalar;
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
         const T _scalar) const
+        requires std::is_integral_v<T>
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Div(ToSIMD(), simd::SetAll(_scalar)));
-
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _scalar;
+            ret[i] /= _scalar;
         }
-        return v;
+        return ret;
+    }
+
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
+        const T _scalar) const
+        requires std::is_floating_point_v<T>
+    {
+        return *this * (1.f / _scalar);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Mult(ToSIMD(), _other.ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Mult(ToM128(), _other.ToM128())));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _other.e[i];
+            ret[i] *= _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::Div(ToSIMD(), _other.ToSIMD()));
+        JUG_VECTOR4_SIMD_PATH(MakeFromM128(simd::Div(ToM128(), _other.ToM128())));
 
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _other.e[i];
+            ret[i] /= _other[i];
         }
-        return v;
+        return ret;
     }
 
     JUG_MATH_API constexpr VECTOR& operator+=(
@@ -210,22 +216,16 @@ struct alignas(16) VECTOR<T, 4>
     [[nodiscard]] JUG_MATH_API constexpr bool operator==(
         const VECTOR _other) const
     {
-        JUG_VECTOR4_SIMD_PATH(simd::AllTrue(simd::CmpEq(ToSIMD(), _other.ToSIMD())));
+        JUG_VECTOR4_SIMD_PATH(simd::AllTrue(simd::CmpEq(ToM128(), _other.ToM128())));
 
         for (size_t i = 0; i < kDim; ++i)
         {
-            if (e[i] != _other.e[i])   // NOLINT
+            if (e[i] != _other[i])   // NOLINT
             {
                 return false;
             }
         }
         return true;
-    }
-
-    [[nodiscard]] JUG_MATH_API constexpr bool operator!=(
-        const VECTOR _other) const
-    {
-        return !(*this == _other);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](
@@ -250,14 +250,14 @@ struct alignas(16) VECTOR<T, 4>
         return e.data();
     }
 
-    JUG_MATH_API constexpr explicit operator VECTOR<T, 3>() const
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR<T, 2> ToVector2() const
     {
-        return VECTOR<T, 3> { e[0], e[1], e[2] };
+        return VECTOR<T, 2> { x, y };
     }
 
-    JUG_MATH_API constexpr explicit operator VECTOR<T, 2>() const
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR<T, 3> ToVector3() const
     {
-        return VECTOR<T, 2> { e[0], e[1] };
+        return VECTOR<T, 3> { x, y, z };
     }
 
     const static VECTOR kZero;
@@ -279,17 +279,11 @@ struct alignas(16) VECTOR<T, 4>
     {
         struct
         {
-            T x;
-            T y;
-            T z;
-            T w;
+            T x, y, z, w;
         };
         struct
         {
-            T r;
-            T g;
-            T b;
-            T a;
+            T r, g, b, a;
         };
         ARRAY<T, 4> e;
     };
@@ -348,3 +342,5 @@ struct MathConstants<VECTOR4>
 };
 
 }   // namespace jug
+
+#undef JUG_VECTOR4_SIMD_PATH

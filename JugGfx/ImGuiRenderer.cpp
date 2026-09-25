@@ -1,13 +1,12 @@
 ﻿#include "pch.h"
 #include "ImGuiRenderer.h"
 
-#include "Graphics.h"
-#include "Shader.h"
-
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 
+#include "Graphics.h"
 #include "ImGuiImage.h"
+#include "Shader.h"
 
 namespace jug
 {
@@ -141,7 +140,7 @@ namespace
 
     struct CB_IMGUI
     {
-        float    proj[4][4];
+        MATRIX   proj;
         uint32_t bLinearize;
         uint32_t padding[3];
     };
@@ -152,7 +151,7 @@ namespace
         float    mip;
         float    layer;
         uint32_t face;
-        uint32_t bTextureSrgb;
+        uint32_t bTextureSRGB;
         uint32_t padding[3];
     };
 
@@ -187,10 +186,6 @@ namespace
         return Graphics::GetSingleton().CreateShader(shader->GetByteCode());
     }
 
-    // ===========================================
-    //  Viewport
-    // ===========================================
-
     [[nodiscard]] SDL_Window* ToSdlWindow_(
         const ImGuiViewport* _pViewport)
     {
@@ -224,7 +219,7 @@ ImGuiRenderer::ImGuiRenderer(
     io.IniFilename = m_iniPath.empty() ? nullptr : m_iniPath.c_str();
     if (_bEnableViewports)
     {
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // 백엔드 Init 전에 켜야 멀티 뷰포트가 붙는다.
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
 
     // find framebuffer
@@ -286,19 +281,14 @@ void ImGuiRenderer::OnSystemEvent_(
     ImGui_ImplSDL3_ProcessEvent(&_event.GetEvent());
 }
 
-// ===========================================
-//  Renderer
-// ===========================================
-
 void ImGuiRenderer::InitRenderer_()
 {
     Graphics& gfx = Graphics::GetSingleton();
 
     ImGuiIO& io                = ImGui::GetIO();
-    io.BackendRendererName     = "imgui_impl_juggfx";
+    io.BackendRendererName     = "ImGui.Impl.JugGfx";
     io.BackendRendererUserData = this;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-
     io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
     ImGuiPlatformIO& platformIO       = ImGui::GetPlatformIO();
@@ -348,18 +338,28 @@ void ImGuiRenderer::ShutdownRenderer_()
 
 void ImGuiRenderer::CreateFontTexture_()
 {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO&  io  = ImGui::GetIO();
+    Graphics& gfx = Graphics::GetSingleton();
 
     unsigned char* pPixels = nullptr;
     int            width   = 0;
     int            height  = 0;
     io.Fonts->GetTexDataAsRGBA32(&pPixels, &width, &height);
 
-    const MemoryView data { pPixels, static_cast<size_t>(width) * static_cast<size_t>(height) * 4 };
-    m_fontTexh = Graphics::GetSingleton().CreateTexture2D(static_cast<uint32_t>(width), static_cast<uint32_t>(height), eTextureFormat::RGBA8_UNorm, 1, eMSAA::None, eTextureOption::None, Span<const MemoryView> { &data, 1 });
-    Graphics::GetSingleton().SetName(m_fontTexh, "ImGui.FontAtlas");
+    const uint32_t w = static_cast<uint32_t>(width);
+    const uint32_t h = static_cast<uint32_t>(height);
 
-    io.Fonts->SetTexID(ToTextureID(m_fontTexh));
+    // init data
+    ARRAY<MemoryView, 1> data;
+    data[0] = { pPixels, w * h * 4 };
+
+    // create
+    m_fontTexh = gfx.CreateTexture2D(w, h, eTextureFormat::RGBA8_UNorm, 1, eMSAA::None, eTextureOption::None, data);
+    gfx.SetName(m_fontTexh, "ImGui.FontAtlas");
+
+    // set id
+    ImGuiTextureRef texture = m_fontTexh;
+    io.Fonts->SetTexID(texture.ToImTextureID());
 }
 
 void ImGuiRenderer::ReserveBuffers_(
@@ -412,24 +412,24 @@ void ImGuiRenderer::SetupRenderState_(
 void ImGuiRenderer::BindTexture_(
     const uint64_t _id) const
 {
-    Graphics&          gfx     = Graphics::GetSingleton();
-    const ImGuiTexture texture = FromTextureID(_id);
-    const TextureDesc& desc    = gfx.GetDesc(texture.texh);
+    Graphics&             gfx     = Graphics::GetSingleton();
+    const ImGuiTextureRef texture = _id;
+    const TextureDesc&    desc    = gfx.GetDesc(texture.texh);
 
-    JUG_ASSERT(texture.mip < desc.numMips, "ImGuiTexture::mip is out of range.");
+    JUG_ASSERT(texture.mip < desc.numMips, "ImGuiTextureRef::mip is out of range.");
     JUG_ASSERT(!desc.flags.Has(eTextureOption::Readback), "A readback texture cannot be drawn by ImGui.");
 
-    CB_IMGUI_TEXTURE constants = {};
-    constants.mip              = static_cast<float>(texture.mip);
-    constants.face             = static_cast<uint32_t>(texture.face);
-    constants.bTextureSrgb     = IsSRGB(desc.format) ? 1u : 0u;
+    CB_IMGUI_TEXTURE constants;
+    constants.mip          = static_cast<float>(texture.mip);
+    constants.face         = static_cast<uint32_t>(texture.face);
+    constants.bTextureSRGB = IsSRGB(desc.format) ? 1u : 0u;
 
     eImGuiTexture type = eImGuiTexture::Texture2D;
     switch (desc.type)
     {
         case eTexture::Texture2D:
         {
-            JUG_ASSERT(texture.layer < desc.numLayers, "ImGuiTexture::layer is out of range.");
+            JUG_ASSERT(texture.layer < desc.numLayers, "ImGuiTextureRef::layer is out of range.");
             type            = desc.numLayers > 1 ? eImGuiTexture::Texture2DArray : eImGuiTexture::Texture2D;
             constants.layer = static_cast<float>(texture.layer);
         }
@@ -438,7 +438,7 @@ void ImGuiRenderer::BindTexture_(
         case eTexture::TextureCube:
         {
             const uint32_t numCubes = desc.numLayers / 6;
-            JUG_ASSERT(texture.layer < numCubes, "ImGuiTexture::layer (cube index) is out of range.");
+            JUG_ASSERT(texture.layer < numCubes, "ImGuiTextureRef::layer (cube index) is out of range.");
             type            = numCubes > 1 ? eImGuiTexture::TextureCubeArray : eImGuiTexture::TextureCube;
             constants.layer = static_cast<float>(texture.layer);
         }
@@ -447,7 +447,7 @@ void ImGuiRenderer::BindTexture_(
         case eTexture::Texture3D:
         {
             const uint32_t depth = CalcTextureSize(desc.width, desc.height, desc.depth, texture.mip).depth;
-            JUG_ASSERT(texture.layer < depth, "ImGuiTexture::layer (depth slice) is out of range.");
+            JUG_ASSERT(texture.layer < depth, "ImGuiTextureRef::layer (depth slice) is out of range.");
             type            = eImGuiTexture::Texture3D;
             constants.layer = (static_cast<float>(texture.layer) + 0.5f) / static_cast<float>(depth);
         }
@@ -455,9 +455,10 @@ void ImGuiRenderer::BindTexture_(
     }
     constants.type = static_cast<uint32_t>(type);
 
-    gfx.UpdateBuffer(m_textureCbh, MemoryView { &constants, sizeof(constants) });
+    // udpate
+    gfx.UpdateBuffer(m_textureCbh, constants);
 
-    // 셰이더가 선언한 모든 SRV 슬롯의 차원이 검증되므로, 사용하지 않는 슬롯은 null 로 비운다.
+    // bind
     for (size_t slot = 0; slot < CountOf<eImGuiTexture>(); ++slot)
     {
         const TextureHandle texh = (slot == static_cast<size_t>(type)) ? texture.texh : kNullHandle;
@@ -483,7 +484,7 @@ void ImGuiRenderer::RenderDrawData_(
     Graphics& gfx = Graphics::GetSingleton();
     ReserveBuffers_(static_cast<uint32_t>(_drawData.TotalVtxCount), static_cast<uint32_t>(_drawData.TotalIdxCount));
 
-    // upload vertex / index
+    // upload
     {
         const MutableMemoryView vtxMem = gfx.MapBuffer(m_vbh);
         const MutableMemoryView idxMem = gfx.MapBuffer(m_ibh);
@@ -504,24 +505,27 @@ void ImGuiRenderer::RenderDrawData_(
 
     // constants
     {
+        CB_IMGUI constants;
+
+        // proj
         const float l = _drawData.DisplayPos.x;
         const float r = _drawData.DisplayPos.x + _drawData.DisplaySize.x;
         const float t = _drawData.DisplayPos.y;
         const float b = _drawData.DisplayPos.y + _drawData.DisplaySize.y;
 
-        CB_IMGUI constants   = {};
-        constants.proj[0][0] = 2.f / (r - l);
-        constants.proj[1][1] = 2.f / (t - b);
-        constants.proj[2][2] = 0.5f;
-        constants.proj[3][0] = (r + l) / (l - r);
-        constants.proj[3][1] = (t + b) / (b - t);
-        constants.proj[3][2] = 0.5f;
-        constants.proj[3][3] = 1.f;
+        constants.proj = {
+            {     2.f / (r - l),               0.f,  0.f, 0.f },
+            {               0.f,     2.f / (t - b),  0.f, 0.f },
+            {               0.f,               0.f, 0.5f, 0.f },
+            { (r + l) / (l - r), (t + b) / (b - t), 0.5f, 1.f }
+        };
 
-        const TextureHandle targetTexh = gfx.GetDesc(_fbh).atts[0].texh;
-        constants.bLinearize           = IsSRGB(gfx.GetDesc(targetTexh).format) ? 1u : 0u;
+        // linearize
+        const TextureHandle texh = gfx.GetDesc(_fbh).atts[0].texh;
+        constants.bLinearize     = IsSRGB(gfx.GetDesc(texh).format) ? 1u : 0u;
 
-        gfx.UpdateBuffer(m_frameCbh, MemoryView { &constants, sizeof(constants) });
+        // update
+        gfx.UpdateBuffer(m_frameCbh, constants);
     }
 
     SetupRenderState_(_drawData, _fbh);
@@ -532,7 +536,7 @@ void ImGuiRenderer::RenderDrawData_(
 
     uint32_t    globalVtxOffset = 0;
     uint32_t    globalIdxOffset = 0;
-    ImTextureID lastTexId       = ImTextureID {};   // 0 = 바인딩 없음
+    ImTextureID lastTexID       = ImTextureID {};   // 0 = 바인딩 없음
     for (const ImDrawList* pList: _drawData.CmdLists)
     {
         for (const ImDrawCmd& cmd: pList->CmdBuffer)
@@ -547,7 +551,7 @@ void ImGuiRenderer::RenderDrawData_(
                 {
                     cmd.UserCallback(pList, &cmd);
                 }
-                lastTexId = ImTextureID {};   // 콜백이 바인딩을 바꿨을 수 있음
+                lastTexID = ImTextureID {};   // 콜백이 바인딩을 바꿨을 수 있음
                 continue;
             }
 
@@ -559,10 +563,10 @@ void ImGuiRenderer::RenderDrawData_(
             }
 
             gfx.SetScissor(static_cast<int>(clipMin.x), static_cast<int>(clipMin.y), static_cast<int>(clipMax.x - clipMin.x), static_cast<int>(clipMax.y - clipMin.y));
-            if (cmd.GetTexID() != lastTexId)
+            if (cmd.GetTexID() != lastTexID)
             {
                 BindTexture_(cmd.GetTexID());
-                lastTexId = cmd.GetTexID();
+                lastTexID = cmd.GetTexID();
             }
             gfx.SetIndexBuffer(m_ibh, globalIdxOffset + cmd.IdxOffset, cmd.ElemCount);
             gfx.SetSubmitParam(eSubmitParam::BaseVertexLocation, globalVtxOffset + cmd.VtxOffset);
@@ -590,7 +594,9 @@ void ImGuiRenderer::RendererCreateWindow_(
     int height = 0;
     SDL_GetWindowSizeInPixels(pWindow, &width, &height);
 
-    const FrameBufferHandle fbh = gfx.CreateFrameBuffer(SDL_GetWindowID(pWindow), static_cast<uint32_t>(width), static_cast<uint32_t>(height), format, 2);
+    const uint32_t          w   = static_cast<uint32_t>(width);
+    const uint32_t          h   = static_cast<uint32_t>(height);
+    const FrameBufferHandle fbh = gfx.CreateFrameBuffer(SDL_GetWindowID(pWindow), w, h, format, 2);
     gfx.SetVSync(fbh, false);   // 창마다 vsync 로 Present 하면 창 수만큼 vblank 를 기다린다. 메인만 동기화.
     gfx.SetName(fbh, "ImGui.Viewport");
 
@@ -614,7 +620,10 @@ void ImGuiRenderer::RendererSetWindowSize_(
     int width  = 0;
     int height = 0;
     SDL_GetWindowSizeInPixels(ToSdlWindow_(_pViewport), &width, &height);
-    Graphics::GetSingleton().ResizeFrameBuffer(ToFrameBufferHandle_(_pViewport), static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+    const uint32_t w = static_cast<uint32_t>(width);
+    const uint32_t h = static_cast<uint32_t>(height);
+    Graphics::GetSingleton().ResizeFrameBuffer(ToFrameBufferHandle_(_pViewport), w, h);
 }
 
 void ImGuiRenderer::RendererRenderWindow_(

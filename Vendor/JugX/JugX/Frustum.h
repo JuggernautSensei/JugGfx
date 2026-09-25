@@ -39,10 +39,10 @@ struct FRUSTUM
     [[nodiscard]] JUG_MATH_API static constexpr FRUSTUM MakeFromMatrix(
         const MATRIX& _mtx)
     {
-        const VECTOR4 c0 = VECTOR4 { _mtx.r[0].e[0], _mtx.r[1].e[0], _mtx.r[2].e[0], _mtx.r[3].e[0] };
-        const VECTOR4 c1 = VECTOR4 { _mtx.r[0].e[1], _mtx.r[1].e[1], _mtx.r[2].e[1], _mtx.r[3].e[1] };
-        const VECTOR4 c2 = VECTOR4 { _mtx.r[0].e[2], _mtx.r[1].e[2], _mtx.r[2].e[2], _mtx.r[3].e[2] };
-        const VECTOR4 c3 = VECTOR4 { _mtx.r[0].e[3], _mtx.r[1].e[3], _mtx.r[2].e[3], _mtx.r[3].e[3] };
+        const VECTOR4 c0 = VECTOR4 { _mtx[0][0], _mtx[1][0], _mtx[2][0], _mtx[3][0] };
+        const VECTOR4 c1 = VECTOR4 { _mtx[0][1], _mtx[1][1], _mtx[2][1], _mtx[3][1] };
+        const VECTOR4 c2 = VECTOR4 { _mtx[0][2], _mtx[1][2], _mtx[2][2], _mtx[3][2] };
+        const VECTOR4 c3 = VECTOR4 { _mtx[0][3], _mtx[1][3], _mtx[2][3], _mtx[3][3] };
 
         return FRUSTUM {
             PLANE { c3 - c0 },

@@ -10,8 +10,6 @@ namespace jug
 template<VectorScalarT T>
 struct VECTOR<T, 3>
 {
-    static_assert(std::is_integral_v<T> || std::is_same_v<T, float>, "Scalar must be integral or float type.");
-
     JUG_MATH_API VECTOR() = default;
 
     JUG_MATH_API constexpr VECTOR(
@@ -25,7 +23,7 @@ struct VECTOR<T, 3>
     JUG_MATH_API constexpr VECTOR(
         const VECTOR<T, 2> _xy,
         const T            _z)
-        : e { _xy.e[0], _xy.e[1], _z }
+        : e { _xy[0], _xy[1], _z }
     {
     }
 
@@ -37,15 +35,17 @@ struct VECTOR<T, 3>
     }
 
 #ifdef JUG_SIMD_AVAILABLE
-    /* implicit */ JUG_MATH_API VECTOR(
+    [[nodiscard]] static VECTOR MakeFromM128(
         const simd::M128 _value)
-        requires std::same_as<T, float>
+        requires std::is_floating_point_v<T>
     {
-        simd::StoreFloat3(e.data(), _value);
+        VECTOR ret;
+        simd::StoreFloat3(ret.e.data(), _value);
+        return ret;
     }
 
-    [[nodiscard]] simd::M128 ToSIMD() const
-        requires std::same_as<T, float>
+    [[nodiscard]] simd::M128 ToM128() const
+        requires std::is_floating_point_v<T>
     {
         return simd::LoadFloat3(e.data());
     }
@@ -56,7 +56,7 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] = -v.e[i];
+            v[i] = -v[i];
         }
         return v;
     }
@@ -67,7 +67,7 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] += _other.e[i];
+            v[i] += _other[i];
         }
         return v;
     }
@@ -78,7 +78,7 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] -= _other.e[i];
+            v[i] -= _other[i];
         }
         return v;
     }
@@ -89,20 +89,28 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _scalar;
+            v[i] *= _scalar;
         }
         return v;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
         const T _scalar) const
+        requires std::is_integral_v<T>
     {
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _scalar;
+            v[i] /= _scalar;
         }
         return v;
+    }
+
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
+        const T _scalar) const
+        requires std::is_floating_point_v<T>
+    {
+        return *this * (1.f / _scalar);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
@@ -111,7 +119,7 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _other.e[i];
+            v[i] *= _other[i];
         }
         return v;
     }
@@ -122,7 +130,7 @@ struct VECTOR<T, 3>
         VECTOR v = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _other.e[i];
+            v[i] /= _other[i];
         }
         return v;
     }
@@ -174,18 +182,12 @@ struct VECTOR<T, 3>
     {
         for (size_t i = 0; i < kDim; ++i)
         {
-            if (e[i] != _other.e[i])   // NOLINT
+            if (e[i] != _other[i])   // NOLINT
             {
                 return false;
             }
         }
         return true;
-    }
-
-    [[nodiscard]] JUG_MATH_API constexpr bool operator!=(
-        const VECTOR _other) const
-    {
-        return !(*this == _other);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](
@@ -210,9 +212,9 @@ struct VECTOR<T, 3>
         return e.data();
     }
 
-    JUG_MATH_API constexpr explicit operator VECTOR<T, 2>() const
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR<T, 2> ToVector2() const
     {
-        return VECTOR<T, 2> { e[0], e[1] };
+        return VECTOR<T, 2> { x, y };
     }
 
     const static VECTOR kZero;
@@ -233,33 +235,23 @@ struct VECTOR<T, 3>
     {
         struct
         {
-            T x;
-            T y;
-            T z;
+            T x, y, z;
         };
         struct
         {
-            T width;
-            T height;
-            T depth;
+            T width, height, depth;
         };
         struct
         {
-            T pitch;
-            T yaw;
-            T roll;
+            T pitch, yaw, roll;
         };
         struct
         {
-            T r;
-            T g;
-            T b;
+            T r, g, b;
         };
         struct
         {
-            T u;
-            T v;
-            T w;
+            T u, v, w;
         };
         ARRAY<T, 3> e;
     };

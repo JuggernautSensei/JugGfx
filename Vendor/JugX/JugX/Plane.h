@@ -6,7 +6,7 @@ namespace jug
 
 struct PLANE
 {
-    JUG_MATH_API  PLANE() = default;
+    JUG_MATH_API PLANE() = default;
 
     JUG_MATH_API constexpr PLANE(
         const VECTOR3 _normal,
@@ -28,8 +28,8 @@ struct PLANE
 
     explicit JUG_MATH_API constexpr PLANE(
         const VECTOR4 _v)
-        : normal(_v.e[0], _v.e[1], _v.e[2])
-        , d(_v.e[3])
+        : normal(_v[0], _v[1], _v[2])
+        , d(_v[3])
     {
     }
 
@@ -120,18 +120,11 @@ struct MathConstants<PLANE>
     return (cross23 * -_x.d + cross31 * -_y.d + cross12 * -_z.d) / denom;
 }
 
-
 [[nodiscard]] JUG_MATH_API constexpr PLANE Xform(
     const PLANE   _plane,
-    const MATRIX& _invTransMtx) // Plane은 벡터이기 때문에 변환시 역-전치 행렬을 사용해야함.
+    const MATRIX& _invTransMtx)   // Plane은 벡터이기 때문에 변환시 역-전치 행렬을 사용해야함.
 {
-    if (std::is_constant_evaluated())  // constexpr 상황에서 union 활성멤버 제약 때문에 fallback
-    {
-        const VECTOR4 v { _plane.normal.e[0], _plane.normal.e[1], _plane.normal.e[2], _plane.d };
-        return PLANE { Xform(v, _invTransMtx) };
-    }
-
-    return PLANE { Xform(_plane.v, _invTransMtx) };
+    return PLANE { Xform(VECTOR4 { _plane.normal[0], _plane.normal[1], _plane.normal[2], _plane.d }, _invTransMtx) };
 }
 
 [[nodiscard]] JUG_MATH_API constexpr float Distance(
@@ -141,6 +134,5 @@ struct MathConstants<PLANE>
     JUG_ASSERT(IsNormalized(_plane), "Plane must be normalized to calculate distance");
     return Dot(_plane.normal, _point) + _plane.d;
 }
-
 
 }   // namespace jug

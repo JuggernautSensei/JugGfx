@@ -40,17 +40,17 @@ struct AABB
 
     [[nodiscard]] JUG_MATH_API constexpr float GetWidth() const
     {
-        return extends.e[0] * 2.f;
+        return extends[0] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetHeight() const
     {
-        return extends.e[1] * 2.f;
+        return extends[1] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetDepth() const
     {
-        return extends.e[2] * 2.f;
+        return extends[2] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr DIRECT_ENUM_ARRAY<eCorner, VECTOR3> CalcCorners() const
@@ -59,14 +59,14 @@ struct AABB
         const VECTOR3 max = GetMax();
 
         DIRECT_ENUM_ARRAY<eCorner, VECTOR3> corners;
-        corners[eCorner::LeftBottomNear]  = VECTOR3 { min.e[0], min.e[1], min.e[2] };
-        corners[eCorner::LeftBottomFar]   = VECTOR3 { min.e[0], min.e[1], max.e[2] };
-        corners[eCorner::LeftTopNear]     = VECTOR3 { min.e[0], max.e[1], min.e[2] };
-        corners[eCorner::LeftTopFar]      = VECTOR3 { min.e[0], max.e[1], max.e[2] };
-        corners[eCorner::RightBottomNear] = VECTOR3 { max.e[0], min.e[1], min.e[2] };
-        corners[eCorner::RightBottomFar]  = VECTOR3 { max.e[0], min.e[1], max.e[2] };
-        corners[eCorner::RightTopNear]    = VECTOR3 { max.e[0], max.e[1], min.e[2] };
-        corners[eCorner::RightTopFar]     = VECTOR3 { max.e[0], max.e[1], max.e[2] };
+        corners[eCorner::LeftBottomNear]  = VECTOR3 { min[0], min[1], min[2] };
+        corners[eCorner::LeftBottomFar]   = VECTOR3 { min[0], min[1], max[2] };
+        corners[eCorner::LeftTopNear]     = VECTOR3 { min[0], max[1], min[2] };
+        corners[eCorner::LeftTopFar]      = VECTOR3 { min[0], max[1], max[2] };
+        corners[eCorner::RightBottomNear] = VECTOR3 { max[0], min[1], min[2] };
+        corners[eCorner::RightBottomFar]  = VECTOR3 { max[0], min[1], max[2] };
+        corners[eCorner::RightTopNear]    = VECTOR3 { max[0], max[1], min[2] };
+        corners[eCorner::RightTopFar]     = VECTOR3 { max[0], max[1], max[2] };
         return corners;
     }
 
@@ -118,11 +118,9 @@ struct MathConstants<AABB>
     const AABB&   _aabb,
     const MATRIX& _mtx)
 {
-    const VECTOR3 newCenter = XformPoint(_aabb.center, _mtx);
-    const VECTOR3 ex        = Abs(XformVector(VECTOR3 { _aabb.extends.e[0], 0.f, 0.f }, _mtx));
-    const VECTOR3 ey        = Abs(XformVector(VECTOR3 { 0.f, _aabb.extends.e[1], 0.f }, _mtx));
-    const VECTOR3 ez        = Abs(XformVector(VECTOR3 { 0.f, 0.f, _aabb.extends.e[2] }, _mtx));
-    return AABB { newCenter, ex + ey + ez };
+    const VECTOR3 e       = Abs(_aabb.extends);
+    const VECTOR4 extends = Abs(_mtx[0]) * e[0] + Abs(_mtx[1]) * e[1] + Abs(_mtx[2]) * e[2];
+    return AABB { XformPoint(_aabb.center, _mtx), extends.ToVector3() };
 }
 
 }   // namespace jug

@@ -12,7 +12,11 @@
 #            include <emmintrin.h>
 #            define JUG_MATH_SIMD_SSE 1
 #        endif
-#        if defined(__FMA__)
+#        if defined(__AVX__)
+#            include <immintrin.h>
+#            define JUG_MATH_SIMD_AVX 1
+#        endif
+#        if defined(__FMA__) || defined(__AVX2__)   // MSVC 는 /arch:AVX2 에서 FMA3 를 켜지만 __FMA__ 를 정의하지 않는다.
 #            include <immintrin.h>
 #            define JUG_MATH_SIMD_FMA 1
 #        endif
@@ -82,6 +86,19 @@ inline void StoreAligned(
 #        endif
 }
 
+inline void StoreAligned2(
+    float      _pOutFloat8[8],
+    const M128 _lo,
+    const M128 _hi)
+{
+#        if defined(JUG_MATH_SIMD_AVX)
+    _mm256_storeu_ps(_pOutFloat8, _mm256_set_m128(_hi, _lo));
+#        else
+    StoreAligned(_pOutFloat8, _lo);
+    StoreAligned(_pOutFloat8 + 4, _hi);
+#        endif
+}
+
 [[nodiscard]] inline M128 LoadFloat3(
     const float _pFloat3[3])
 {
@@ -142,7 +159,7 @@ inline void StoreFloat3(
 }
 
 // =======================================================
-//  Basic Operations
+//  Basic
 // =======================================================
 
 [[nodiscard]] inline M128 Add(
@@ -279,20 +296,6 @@ inline void StoreFloat3(
     const M128 half  = _mm_set1_ps(0.5f);
     const M128 three = _mm_set1_ps(3.f);
     return _mm_mul_ps(_mm_mul_ps(half, y0), _mm_sub_ps(three, _mm_mul_ps(_a, _mm_mul_ps(y0, y0))));
-#        endif
-}
-
-[[nodiscard]] inline M128 Rcp(
-    const M128 _a)
-{
-#        if defined(JUG_MATH_SIMD_NEON)
-    float32x4_t r = vrecpeq_f32(_a);
-    r             = vmulq_f32(vrecpsq_f32(_a, r), r);
-    return r;
-#        elif defined(JUG_MATH_SIMD_SSE)
-    const M128 r0  = _mm_rcp_ps(_a);
-    const M128 two = _mm_set1_ps(2.f);
-    return _mm_mul_ps(r0, _mm_sub_ps(two, _mm_mul_ps(_a, r0)));
 #        endif
 }
 

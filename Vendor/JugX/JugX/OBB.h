@@ -23,47 +23,47 @@ struct OBB
         const AABB& _aabb)
     {
         return OBB {
-            MATRIX { VECTOR4 { _aabb.extends.e[0], 0.f, 0.f, 0.f },
-                    VECTOR4 { 0.f, _aabb.extends.e[1], 0.f, 0.f },
-                    VECTOR4 { 0.f, 0.f, _aabb.extends.e[2], 0.f },
-                    VECTOR4 { _aabb.center.e[0], _aabb.center.e[1], _aabb.center.e[2], 1.f } }
+            MATRIX { VECTOR4 { _aabb.extends[0], 0.f, 0.f, 0.f },
+                    VECTOR4 { 0.f, _aabb.extends[1], 0.f, 0.f },
+                    VECTOR4 { 0.f, 0.f, _aabb.extends[2], 0.f },
+                    VECTOR4 { _aabb.center[0], _aabb.center[1], _aabb.center[2], 1.f } }
         };
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR3 GetCenter() const
     {
-        return VECTOR3 { mtx.r[3].e[0], mtx.r[3].e[1], mtx.r[3].e[2] };
+        return VECTOR3 { mtx[3][0], mtx[3][1], mtx[3][2] };
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR3 GetExtents() const
     {
         return VECTOR3 {
-            Length(VECTOR3 { mtx.r[0].e[0], mtx.r[0].e[1], mtx.r[0].e[2] }),
-            Length(VECTOR3 { mtx.r[1].e[0], mtx.r[1].e[1], mtx.r[1].e[2] }),
-            Length(VECTOR3 { mtx.r[2].e[0], mtx.r[2].e[1], mtx.r[2].e[2] })
+            Length(VECTOR3 { mtx[0][0], mtx[0][1], mtx[0][2] }),
+            Length(VECTOR3 { mtx[1][0], mtx[1][1], mtx[1][2] }),
+            Length(VECTOR3 { mtx[2][0], mtx[2][1], mtx[2][2] })
         };
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetWidth() const
     {
-        return GetExtents().e[0] * 2.f;
+        return GetExtents()[0] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetHeight() const
     {
-        return GetExtents().e[1] * 2.f;
+        return GetExtents()[1] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr float GetDepth() const
     {
-        return GetExtents().e[2] * 2.f;
+        return GetExtents()[2] * 2.f;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr DIRECT_ENUM_ARRAY<eCorner, VECTOR3> CalcCorners() const
     {
-        const VECTOR3 axisX = VECTOR3 { mtx.r[0].e[0], mtx.r[0].e[1], mtx.r[0].e[2] };
-        const VECTOR3 axisY = VECTOR3 { mtx.r[1].e[0], mtx.r[1].e[1], mtx.r[1].e[2] };
-        const VECTOR3 axisZ = VECTOR3 { mtx.r[2].e[0], mtx.r[2].e[1], mtx.r[2].e[2] };
+        const VECTOR3 axisX = VECTOR3 { mtx[0][0], mtx[0][1], mtx[0][2] };
+        const VECTOR3 axisY = VECTOR3 { mtx[1][0], mtx[1][1], mtx[1][2] };
+        const VECTOR3 axisZ = VECTOR3 { mtx[2][0], mtx[2][1], mtx[2][2] };
         const VECTOR3 c     = GetCenter();
 
         DIRECT_ENUM_ARRAY<eCorner, VECTOR3> corners;

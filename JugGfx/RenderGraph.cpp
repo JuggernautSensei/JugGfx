@@ -1331,7 +1331,7 @@ void RenderGraph::BuildCompiledPasses_()
             if (bFirstLap && liveRead[slot] != ref)
             {
                 ResourceBind& bind = pass.reads.emplace_back();
-                bind.ref           = ref;
+                bind.resource           = ref;
                 bind.slot          = slot;
             }
             liveRead[slot] = ref;
@@ -1345,7 +1345,7 @@ void RenderGraph::BuildCompiledPasses_()
             if (bFirstLap && liveRW[slot] != ref)
             {
                 ResourceBind& bind = pass.readWrites.emplace_back();
-                bind.ref           = ref;
+                bind.resource           = ref;
                 bind.slot          = slot;
             }
             liveRW[slot] = ref;
@@ -1471,13 +1471,13 @@ void RenderGraph::Execute()
                 const eShader  shader = static_cast<eShader>(bind.slot >> kSlotShift);
                 const uint32_t slot   = bind.slot & kSlotMask;
 
-                if (bind.ref.GetType() == eResource::Texture)
+                if (bind.resource.GetType() == eResource::Texture)
                 {
-                    gfx.SetTexture(bind.ref.GetTextureHandle(), shader, slot);
+                    gfx.SetTexture(bind.resource.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    gfx.SetBuffer(bind.ref.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBuffer(bind.resource.GetStorageBufferHandle(), shader, slot);
                 }
             }
 
@@ -1487,13 +1487,13 @@ void RenderGraph::Execute()
                 const eShaderRW shader = static_cast<eShaderRW>(bind.slot >> kSlotShift);
                 const uint32_t  slot   = bind.slot & kSlotMask;
 
-                if (bind.ref.GetType() == eResource::Texture)
+                if (bind.resource.GetType() == eResource::Texture)
                 {
-                    gfx.SetTextureRW(bind.ref.GetTextureHandle(), shader, slot);
+                    gfx.SetTextureRW(bind.resource.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    gfx.SetBufferRW(bind.ref.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBufferRW(bind.resource.GetStorageBufferHandle(), shader, slot);
                 }
             }
 

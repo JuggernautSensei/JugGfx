@@ -20,7 +20,7 @@ class RenderGraph
     {
         using Type = H;
 
-        H    handle     = {};
+        H    handle     = kNullHandle;
         bool bOwnership = false;
     };
 
@@ -120,8 +120,8 @@ class RenderGraph
 
     struct ResourceBind
     {
-        ResourceRef ref  = {};
-        uint32_t    slot = 0;
+        ResourceRef resource = {};
+        uint32_t    slot     = 0;
     };
 
     struct CBufferBind

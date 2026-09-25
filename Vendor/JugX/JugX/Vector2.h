@@ -13,7 +13,7 @@ struct VECTOR;
 template<VectorScalarT T>
 struct VECTOR<T, 2>
 {
-    JUG_MATH_API  VECTOR() = default;
+    JUG_MATH_API VECTOR() = default;
 
     JUG_MATH_API constexpr VECTOR(
         const T _x,
@@ -31,78 +31,86 @@ struct VECTOR<T, 2>
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-() const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] = -v.e[i];
+            ret[i] = -ret[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator+(
         const VECTOR _other) const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] += _other.e[i];
+            ret[i] += _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator-(
         const VECTOR _other) const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] -= _other.e[i];
+            ret[i] -= _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
         const T _scalar) const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _scalar;
+            ret[i] *= _scalar;
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
         const T _scalar) const
+        requires std::is_integral_v<T>
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _scalar;
+            ret[i] /= _scalar;
         }
-        return v;
+        return ret;
+    }
+
+    [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
+        const T _scalar) const
+        requires std::is_floating_point_v<T>
+    {
+        return *this * (1.f / _scalar);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator*(
         const VECTOR _other) const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] *= _other.e[i];
+            ret[i] *= _other[i];
         }
-        return v;
+        return ret;
     }
 
     [[nodiscard]] JUG_MATH_API constexpr VECTOR operator/(
         const VECTOR _other) const
     {
-        VECTOR v = *this;
+        VECTOR ret = *this;
         for (size_t i = 0; i < kDim; ++i)
         {
-            v.e[i] /= _other.e[i];
+            ret[i] /= _other[i];
         }
-        return v;
+        return ret;
     }
 
     JUG_MATH_API constexpr VECTOR& operator+=(
@@ -152,18 +160,12 @@ struct VECTOR<T, 2>
     {
         for (size_t i = 0; i < kDim; ++i)
         {
-            if (e[i] != _other.e[i])   // NOLINT
+            if (e[i] != _other[i])   // NOLINT
             {
                 return false;
             }
         }
         return true;
-    }
-
-    [[nodiscard]] JUG_MATH_API constexpr bool operator!=(
-        const VECTOR _other) const
-    {
-        return !(*this == _other);
     }
 
     [[nodiscard]] JUG_MATH_API constexpr T& operator[](

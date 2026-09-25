@@ -11,17 +11,17 @@ namespace
 
     struct Vertex
     {
-        VECTOR3 position = VECTOR3::kZero;
-        VECTOR3 normal   = VECTOR3::kUp;
-        VECTOR3 tangent  = VECTOR3::kRight;
-        VECTOR2 texCoord = VECTOR2::kZero;
+        VECTOR3 position = Zero<VECTOR3>();
+        VECTOR3 normal   = Up<VECTOR3>();
+        VECTOR3 tangent  = Right<VECTOR3>();
+        VECTOR2 texCoord = Zero<VECTOR2>();
     };
 
     QUATERNION MakeAxisRotation_(
         const VECTOR3 _normal)
     {
         JUG_ASSERT(!IsZeroApprox(_normal), "GeometryFactory - Axis normal must not be zero");
-        return QUATERNION::MakeFromTo(VECTOR3::kUp, Normalize(_normal));
+        return QUATERNION::MakeFromTo(Up<VECTOR3>(), Normalize(_normal));
     }
 
     GeometryFactoryResult Pack_(

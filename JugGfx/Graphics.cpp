@@ -638,10 +638,10 @@ namespace
         }
 
         const VECTOR4 rgba = _borderColor.ToLinear();
-        sd.BorderColor[0]  = rgba.x;
-        sd.BorderColor[1]  = rgba.y;
-        sd.BorderColor[2]  = rgba.z;
-        sd.BorderColor[3]  = rgba.w;
+        sd.BorderColor[0]  = rgba.GetX();
+        sd.BorderColor[1]  = rgba.GetY();
+        sd.BorderColor[2]  = rgba.GetZ();
+        sd.BorderColor[3]  = rgba.GetW();
         sd.MinLOD          = 0.f;
         sd.MaxLOD          = D3D11_FLOAT32_MAX;
         return sd;
@@ -2588,7 +2588,7 @@ void Graphics::ClearRenderTarget(
     const FrameBufferD3D11& fb = m_frameBufferPool[_fbh];
     JUG_ASSERT(_slot < fb.numRts, "Render target slot is out of range.");
     const VECTOR4 color = _color.ToLinear();
-    m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[_slot], color.e.data());
+    m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[_slot], color.GetPtr());
 }
 
 void Graphics::ClearRenderTargets(
@@ -2599,7 +2599,7 @@ void Graphics::ClearRenderTargets(
     const VECTOR4           color = _color.ToLinear();
     for (uint32_t i = 0; i < fb.numRts; ++i)
     {
-        m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[i], color.e.data());
+        m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[i], color.GetPtr());
     }
 }
 
@@ -3583,7 +3583,7 @@ void Graphics::ApplyPipeline_()
     if (m_dirtyFlags & ePipelineDirty::BlendState)
     {
         const VECTOR4 blendFactor = m_blendFactor.ToLinear();
-        m_pD3d11DeviceContext->OMSetBlendState(GetOrCreateBlendState_(), blendFactor.e.data(), 0xFFFF'FFFF);
+        m_pD3d11DeviceContext->OMSetBlendState(GetOrCreateBlendState_(), blendFactor.GetPtr(), 0xFFFF'FFFF);
     }
 
     if (m_dirtyFlags & ePipelineDirty::DepthStencilState)

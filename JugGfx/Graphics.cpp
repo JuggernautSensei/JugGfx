@@ -638,10 +638,10 @@ namespace
         }
 
         const VECTOR4 rgba = _borderColor.ToLinear();
-        sd.BorderColor[0]  = rgba.GetX();
-        sd.BorderColor[1]  = rgba.GetY();
-        sd.BorderColor[2]  = rgba.GetZ();
-        sd.BorderColor[3]  = rgba.GetW();
+        sd.BorderColor[0]  = rgba.x;
+        sd.BorderColor[1]  = rgba.y;
+        sd.BorderColor[2]  = rgba.z;
+        sd.BorderColor[3]  = rgba.w;
         sd.MinLOD          = 0.f;
         sd.MaxLOD          = D3D11_FLOAT32_MAX;
         return sd;

@@ -58,11 +58,11 @@ class RenderGraph
 
     struct PassDesc
     {
-        String name        = {};
-        ePass  type        = ePass::Render;
-        bool   bEnable     = true;
-        bool   bSideEffect = false;
-        bool   bFinalPass  = false;
+        String name         = {};
+        ePass  type         = ePass::Render;
+        bool   bEnable      = true;
+        bool   bSideEffect  = false;
+        bool   bFinalOutput = false;
 
         String programName     = {};
         String frameBufferName = {};
@@ -106,34 +106,11 @@ class RenderGraph
         ProgramHandle     ph  = kNullHandle;
         FrameBufferHandle fbh = kNullHandle;
 
-        Vector<ResourceRef> readRefs      = {};
-        Vector<ResourceRef> readWriteRefs = {};
-        Vector<ResourceRef> writeRefs     = {};
+        Vector<ResourceRef> readResources  = {};
+        Vector<ResourceRef> rwResources    = {};
+        Vector<ResourceRef> writeResources = {};
 
         Vector<ConstantBufferHandle> cbufferHandles = {};
-
-        float viewportX = 0.f;
-        float viewportY = 0.f;
-        float viewportW = 0.f;
-        float viewportH = 0.f;
-    };
-
-    struct ResourceBind
-    {
-        ResourceRef resource = {};
-        uint32_t    slot     = 0;
-    };
-
-    struct CBufferBind
-    {
-        ConstantBufferHandle cbh  = kNullHandle;
-        uint32_t             slot = 0;
-    };
-
-    struct SamplerBind
-    {
-        Sampler  state = {};
-        uint32_t slot  = 0;
     };
 
     struct CompiledPass
@@ -143,11 +120,6 @@ class RenderGraph
         uint64_t readUnbindMask     = 0;
         uint64_t rwUnbindMask       = 0;
         bool     bUnbindFrameBuffer = false;
-
-        Vector<ResourceBind> reads      = {};
-        Vector<ResourceBind> readWrites = {};
-        Vector<CBufferBind>  cbuffers   = {};
-        Vector<SamplerBind>  samplers   = {};
     };
 
 public:
@@ -174,7 +146,7 @@ public:
         RenderPassBuilder(RenderGraph* _pGraph, size_t _index);
 
         RenderPassBuilder& Enable(bool _bEnable = true);
-        RenderPassBuilder& AsFinalPass(bool _bEnable = true);
+        RenderPassBuilder& AsFinalOutput(bool _bEnable = true);
         RenderPassBuilder& AsSideEffect(bool _bEnable = true);
 
         RenderPassBuilder& SetProgram(StringView _name);
@@ -212,7 +184,7 @@ public:
         ComputePassBuilder(RenderGraph* _pGraph, size_t _index);
 
         ComputePassBuilder& Enable(bool _bEnable = true);
-        ComputePassBuilder& AsFinalPass(bool _bEnable = true);
+        ComputePassBuilder& AsFinalOutput(bool _bEnable = true);
         ComputePassBuilder& AsSideEffect(bool _bEnable = true);
 
         ComputePassBuilder& SetProgram(StringView _name);
@@ -300,11 +272,7 @@ private:
     [[nodiscard]] size_t    FindPassIndexOrInvalid_(StringView _name) const;
     [[nodiscard]] PassDesc& GetPassDesc_(size_t _index);
 
-    [[nodiscard]] ResourceRef ResolveResource_(StringView _passName, StringView _name) const;
-
-    void CompileIfNeed_();
-    void ResolveNames_();
-    void BuildCompiledPasses_();
+    void Compile_();
 
     void DestroyOwned_();
 

@@ -2197,7 +2197,7 @@ size_t Graphics::ReadTexture(
     const uint32_t rowPitch   = (size.width * bpp + 7) / 8;
     const uint32_t slicePitch = rowPitch * size.height;
     const uint32_t byteWidth  = slicePitch * size.depth;
-    const uint32_t read       = Min<uint32_t>(static_cast<uint32_t>(_dst.GetSize()), byteWidth);
+    const uint32_t read       = Min(static_cast<uint32_t>(_dst.GetSize()), byteWidth);
 
     D3D11_MAPPED_SUBRESOURCE mapped = {};
     JUG_DX_CHECK(m_pD3d11DeviceContext->Map(texture.pResource, index, D3D11_MAP_READ, 0, &mapped));
@@ -2205,13 +2205,13 @@ size_t Graphics::ReadTexture(
     const std::byte* pSrcBase = static_cast<const std::byte*>(mapped.pData);
     std::byte*       pDstBase = _dst.GetPtr();
 
-    size_t written = 0;
+    uint32_t written = 0;
     for (uint32_t z = 0; z < size.depth && written < read; ++z)
     {
         for (uint32_t y = 0; y < size.height && written < read; ++y)
         {
             const std::byte* pSrc = pSrcBase + z * mapped.DepthPitch + y * mapped.RowPitch;
-            const uint32_t   copy = Min<uint32_t>(rowPitch, read - written);
+            const uint32_t   copy = Min(rowPitch, read - written);
             std::memcpy(pDstBase + written, pSrc, copy);
             written += copy;
         }

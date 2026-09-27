@@ -3,6 +3,7 @@
 
 #include "Graphics.h"
 
+#include <algorithm>
 #include <bit>
 #include <ranges>
 
@@ -10,23 +11,16 @@ namespace jug
 {
 namespace
 {
-    // (스테이지, 슬롯) 을 평탄 인덱스 하나로 접는다. 상위 비트 = 스테이지, 하위 kSlotShift 비트 = 슬롯.
-    // 이 평탄 인덱스가 곧 시뮬레이션 배열의 첨자이자 언바인드 마스크의 비트 위치다.
     constexpr uint32_t kSlotShift = 4;
     constexpr uint32_t kSlotMask  = (1u << kSlotShift) - 1u;
 
     constexpr uint32_t kNumReadSlots      = static_cast<uint32_t>(CountOf<eShader>()) * (1u << kSlotShift);
     constexpr uint32_t kNumReadWriteSlots = static_cast<uint32_t>(CountOf<eShaderRW>()) * (1u << kSlotShift);
-    constexpr uint32_t kNumCBufferSlots   = static_cast<uint32_t>(CountOf<eShader>()) * (1u << kSlotShift);
-    constexpr uint32_t kNumSamplerSlots   = static_cast<uint32_t>(CountOf<eShader>()) * (1u << kSlotShift);
 
-    // 스테이지당 슬롯 수가 stride 를 넘으면 슬롯이 스테이지 비트를 침범해 서로 다른 바인딩이 같은 평탄 인덱스가 된다.
     static_assert(kNumMaxReadSlots <= (1u << kSlotShift), "Too many read slots.");
     static_assert(kNumMaxReadWriteSlots <= (1u << kSlotShift), "Too many read-write slots.");
     static_assert(kNumMaxCBufferSlots <= (1u << kSlotShift), "Too many constant buffer slots.");
     static_assert(kNumMaxSamplerSlots <= (1u << kSlotShift), "Too many sampler slots.");
-
-    // 언바인드 마스크가 uint64_t 라 평탄 슬롯이 64 개를 넘으면 1ull << s 가 깨진다.
     static_assert(kNumReadSlots <= 64, "Read unbind mask does not fit in uint64_t.");
     static_assert(kNumReadWriteSlots <= 64, "Read-write unbind mask does not fit in uint64_t.");
 
@@ -48,33 +42,25 @@ namespace
         return (static_cast<uint32_t>(_shader) << kSlotShift) | _slot;
     }
 
-    // 텍스처와 스토리지 버퍼는 핸들 값이 겹칠 수 있다. 타입을 상위 32 비트에 얹어 충돌을 막는다.
-    [[nodiscard]] uint64_t MakeResourceKey_(
-        const ResourceRef _ref)
-    {
-        return (static_cast<uint64_t>(_ref.GetType()) << 32) | _ref.GetTextureHandle().GetValue();
-    }
-
-    template<typename Map, typename H = typename Map::mapped_type::Type>
+    template<typename Map, typename Mapped = typename Map::mapped_type, typename Handle = typename Mapped::Type>
     void InsertResource_(
         Map&             _map,
         const StringView _name,
-        const H          _handle,
+        const Handle     _handle,
         const bool       _bOwnership)
     {
         JUG_ASSERT(!_name.empty(), "Resource name must not be empty.");
         JUG_ASSERT(_handle, "Cannot register a null handle. name = '{}'", _name);
         JUG_ASSERT(!_map.contains(_name), "Resource '{}' is already registered.", _name);
 
-        _map.emplace(String { _name }, typename Map::mapped_type { _handle, _bOwnership });
+        _map.emplace(String { _name }, Mapped { _handle, _bOwnership });
     }
 
-    // 없으면 삽입, 있으면 핸들만 교체한다. 소유권은 기존 항목의 것을 유지한다.
-    template<typename Map, typename H = typename Map::mapped_type::Type>
+    template<typename Map, typename Mapped = typename Map::mapped_type, typename Handle = typename Mapped::Type>
     void InsertOrReplaceResource_(
         Map&             _map,
         const StringView _name,
-        const H          _handle)
+        const Handle     _handle)
     {
         JUG_ASSERT(!_name.empty(), "Resource name must not be empty.");
         JUG_ASSERT(_handle, "Cannot replace with a null handle. name = '{}'", _name);
@@ -82,11 +68,10 @@ namespace
         const auto it = _map.find(_name);
         if (it == _map.end())
         {
-            _map.emplace(String { _name }, typename Map::mapped_type { _handle, false });
+            _map.emplace(String { _name }, Mapped { _handle, false });
             return;
         }
 
-        // 소유 중인 옛 핸들은 버려지므로 여기서 파괴한다. 같은 핸들이면 파괴하면 안 된다.
         if (it->second.bOwnership && it->second.handle != _handle)
         {
             Graphics::GetSingleton().Destroy(it->second.handle);
@@ -178,10 +163,10 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::Enable(
     return *this;
 }
 
-RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::AsFinalPass(
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::AsFinalOutput(
     const bool _bEnable)
 {
-    m_pGraph->GetPassDesc_(m_index).bFinalPass = _bEnable;
+    m_pGraph->GetPassDesc_(m_index).bFinalOutput = _bEnable;
     return *this;
 }
 
@@ -401,10 +386,10 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::Enable(
     return *this;
 }
 
-RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::AsFinalPass(
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::AsFinalOutput(
     const bool _bEnable)
 {
-    m_pGraph->GetPassDesc_(m_index).bFinalPass = _bEnable;
+    m_pGraph->GetPassDesc_(m_index).bFinalOutput = _bEnable;
     return *this;
 }
 
@@ -555,7 +540,7 @@ size_t RenderGraph::GetOrAddPass_(
     desc.type      = _type;
 
     m_bDirty = true;
-    return static_cast<uint32_t>(m_descs.size()) - 1;
+    return m_descs.size() - 1;
 }
 
 RenderGraph::RenderPassBuilder RenderGraph::AddRenderPass(
@@ -840,43 +825,63 @@ void RenderGraph::Clear()
     m_bDirty = true;
 }
 
-// 하나의 이름이 텍스처일 수도 스토리지 버퍼일 수도 있다. 양쪽 레지스트리를 뒤져 타입을 붙인 참조로 만든다.
-ResourceRef RenderGraph::ResolveResource_(
-    const StringView _passName,
-    const StringView _name) const
+void RenderGraph::Compile_()
 {
-    const auto texIt = m_textures.find(_name);
-    const auto sbIt  = m_storageBuffers.find(_name);
-    JUG_ASSERT(texIt == m_textures.end() || sbIt == m_storageBuffers.end(), "Pass '{}': resource name '{}' is registered as both a texture and a storage buffer.", _passName, _name);
-
-    if (texIt != m_textures.end())
+    if (!m_bDirty)
     {
-        return ResourceRef { texIt->second.handle };
+        return;
     }
 
-    JUG_ASSERT(sbIt != m_storageBuffers.end(), "Pass '{}': resource '{}' is not registered.", _passName, _name);
-    return ResourceRef { sbIt->second.handle };
-}
-
-// 컴파일 1 단계. 저작 구조(PassDesc)의 문자열을 전부 핸들로 푼다.
-// 이 단계가 끝나면 이후 검증·컬링·해저드는 문자열 근처도 가지 않는다.
-void RenderGraph::ResolveNames_()
-{
     Graphics& gfx = Graphics::GetSingleton();
 
+    m_resolved.clear();
     m_resolved.resize(m_descs.size());
+    m_compiledPasses.clear();
+
+    Vector<bool>   alives(m_descs.size(), false);
+    Vector<size_t> pending = {};   // 임시 패스
+    pending.reserve(m_descs.size());
+
+    size_t finalIndex = kInvalidIndex;
+    size_t lastIndex  = kInvalidIndex;
     for (size_t i = 0; i < m_descs.size(); ++i)
     {
-        const PassDesc& desc     = m_descs[i];
-        ResolvedPass&   resolved = m_resolved[i];
-
-        // 유틸리티 패스는 프로그램도 프레임버퍼도 없다. executor 만 부른다.
-        if (desc.type != ePass::Utility)
+        const PassDesc& desc = m_descs[i];
+        if (!desc.bEnable)   // 사용하지 않는 패스
         {
-            JUG_ASSERT(!desc.programName.empty(), "Pass '{}' has no program.", desc.name);
-            resolved.ph = GetProgram(desc.programName);
+            continue;
         }
 
+        // 유틸리티 패스는 프로그램도 프레임버퍼도 바인딩도 없다. executor 만 부른다.
+        if (desc.type == ePass::Utility)
+        {
+            alives[i] = true;
+            pending.push_back(i);
+            continue;
+        }
+
+        if (desc.bSideEffect)
+        {
+            alives[i] = true;
+            pending.push_back(i);
+        }
+
+        // final pass 는 마킹이 있으면 그 패스, 없으면 마지막 활성 렌더/컴퓨트 패스.
+        lastIndex = i;
+        if (desc.bFinalOutput)
+        {
+            JUG_ASSERT(finalIndex == kInvalidIndex, "More than one pass is marked as the final output. '{}' and '{}'", m_descs[finalIndex].name, desc.name);
+            finalIndex = i;
+        }
+
+        // 이름 기반 리소스를 실제 리소스 핸들로 리졸브
+        ResolvedPass& resolved = m_resolved[i];
+
+        // 프로그램
+        JUG_ASSERT(!desc.programName.empty(), "Pass '{}' has no program.", desc.name);
+        resolved.ph = GetProgram(desc.programName);
+
+        // 프레임 버퍼
         if (desc.type == ePass::Render)
         {
             JUG_ASSERT(!desc.frameBufferName.empty(), "Render pass '{}' has no frame buffer.", desc.name);
@@ -887,305 +892,155 @@ void RenderGraph::ResolveNames_()
             resolved.fbh = GetFrameBuffer(desc.frameBufferName);
         }
 
-        // 선언 순서를 그대로 유지한다. 뒤에서 desc.reads[d].slot 과 readRefs[d] 를 인덱스로 짝지어 쓴다.
-        resolved.readRefs.reserve(desc.reads.size());
+        // read 리소스 수집
+        resolved.readResources.reserve(desc.reads.size());
         for (const BindDecl& decl: desc.reads)
         {
-            resolved.readRefs.push_back(ResolveResource_(desc.name, decl.name));
+            const auto texIt = m_textures.find(decl.name);
+            if (texIt != m_textures.end())
+            {
+                JUG_ASSERT(!m_storageBuffers.contains(decl.name), "Pass '{}': resource name '{}' is registered as both a texture and a storage buffer.", desc.name, decl.name);
+                resolved.readResources.emplace_back(texIt->second.handle);
+            }
+            else
+            {
+                const auto sbIt = m_storageBuffers.find(decl.name);
+                JUG_ASSERT(sbIt != m_storageBuffers.end(), "Pass '{}': resource '{}' is not registered.", desc.name, decl.name);
+                resolved.readResources.emplace_back(sbIt->second.handle);
+            }
         }
 
-        resolved.readWriteRefs.reserve(desc.readWrites.size());
+        // rw 리소스 수집
+        resolved.rwResources.reserve(desc.readWrites.size());
         for (const BindDecl& decl: desc.readWrites)
         {
-            resolved.readWriteRefs.push_back(ResolveResource_(desc.name, decl.name));
+            const auto texIt = m_textures.find(decl.name);
+            if (texIt != m_textures.end())
+            {
+                JUG_ASSERT(!m_storageBuffers.contains(decl.name), "Pass '{}': resource name '{}' is registered as both a texture and a storage buffer.", desc.name, decl.name);
+                resolved.rwResources.emplace_back(texIt->second.handle);
+            }
+            else
+            {
+                const auto sbIt = m_storageBuffers.find(decl.name);
+                JUG_ASSERT(sbIt != m_storageBuffers.end(), "Pass '{}': resource '{}' is not registered.", desc.name, decl.name);
+                resolved.rwResources.emplace_back(sbIt->second.handle);
+            }
         }
 
+        // cbuffer 수집
         resolved.cbufferHandles.reserve(desc.cbuffers.size());
         for (const BindDecl& decl: desc.cbuffers)
         {
             resolved.cbufferHandles.push_back(GetConstantBuffer(decl.name));
         }
 
-        // write 집합은 선언하는 게 아니라 프레임버퍼 어태치먼트에서 끌어낸다.
-        // 이 집합의 소비자가 둘(해저드 언바인드 + 컬링 의존성 간선)이라 여기서 뭘 빼면 컬링이 조용히 망가진다.
-        // MSAA 는 RTV 가 MSAA 리소스, SRV 가 리졸브 리소스라 실제 해저드가 없지만 그래도 빼지 않는다.
-        // 남겨서 생기는 비용은 불필요한 언바인드 한 번, 빼서 생기는 비용은 패스 소멸이다.
-        resolved.writeRefs.clear();
+        // write 리소스는 프레임 버퍼에서 유도
         if (resolved.fbh)
         {
             const FrameBufferDesc& fb = gfx.GetDesc(resolved.fbh);
+            JUG_ASSERT(fb.GetNumAttachments() > 0, "Render pass '{}' has no attachments in its frame buffer '{}'.", desc.name, desc.frameBufferName);
+
+            JUG_ASSERT(!desc.bViewportFromFrameBuffer || fb.atts[0].texh, "Render pass '{}': viewport comes from the first attachment of frame buffer '{}', but it is empty.", desc.name, desc.frameBufferName);
+
             for (uint32_t att = 0; att < fb.GetNumAttachments(); ++att)
             {
                 if (fb.atts[att].texh)
                 {
-                    resolved.writeRefs.emplace_back(fb.atts[att].texh);
+                    resolved.writeResources.emplace_back(fb.atts[att].texh);
                 }
             }
-
-            // 뷰포트를 명시하지 않았으면 첫 어태치먼트 크기를 쓴다.
-            if (desc.bViewportFromFrameBuffer && fb.GetNumAttachments() > 0 && fb.atts[0].texh)
-            {
-                const TextureDesc& tex = gfx.GetDesc(fb.atts[0].texh);
-                resolved.viewportX     = 0.f;
-                resolved.viewportY     = 0.f;
-                resolved.viewportW     = static_cast<float>(tex.width);
-                resolved.viewportH     = static_cast<float>(tex.height);
-            }
         }
 
-        if (!desc.bViewportFromFrameBuffer)
+        // 패스 안의 자기 해저드. 파이프라인 적용이 SRV -> UAV -> OM 순이라 한 패스가 같은 리소스를 두 용도로 물리면 런타임이 앞의 것을 조용히 null 로 만든다.
+        for (size_t d = 0; d < resolved.readResources.size(); ++d)
         {
-            resolved.viewportX = desc.viewportX;
-            resolved.viewportY = desc.viewportY;
-            resolved.viewportW = desc.viewportW;
-            resolved.viewportH = desc.viewportH;
-        }
-    }
-}
-
-// Execute 진입점. dirty 일 때만 전체 재컴파일한다.
-// 부분 갱신(핸들만 교체 등)은 지원하지 않는다. 해저드 판정이 이름이 아니라 핸들 값으로 돌아서,
-// 핸들 하나만 바뀌어도 서로 다른 이름이 같은 리소스를 가리키게 되면 해저드 집합 자체가 달라지기 때문.
-void RenderGraph::CompileIfNeed_()
-{
-    if (!m_bDirty)
-    {
-        return;
-    }
-
-    // 컴파일 정보 초기화
-    m_resolved.clear();
-    m_compiledPasses.clear();
-
-    // 활성화된 패스가 하나도 없으면 컴파일을 건너뛴다.
-    // 여기서 막지 않고 이름 해석까지 가면, 꺼진 패스가 참조하던 리소스가 이미 제거됐을 때 엉뚱한 assert 로 죽는다.
-    {
-        bool bAnyEnabled = false;
-        for (const PassDesc& desc: m_descs)
-        {
-            if (desc.bEnable)
-            {
-                bAnyEnabled = true;
-                break;
-            }
+            JUG_ASSERT(std::ranges::find(resolved.writeResources, resolved.readResources[d]) == resolved.writeResources.end(), "Pass '{}': resource '{}' is read while it is an attachment of the pass's own frame buffer '{}'.", desc.name, desc.reads[d].name, desc.frameBufferName);
+            JUG_ASSERT(std::ranges::find(resolved.rwResources, resolved.readResources[d]) == resolved.rwResources.end(), "Pass '{}': resource '{}' is declared as both read and read-write.", desc.name, desc.reads[d].name);
         }
 
-        if (!bAnyEnabled)
+        for (size_t d = 0; d < resolved.rwResources.size(); ++d)
         {
-            m_bDirty = false;
-            JUG_CORE_LOG_TRACE("RenderGraph compiled. no enabled pass. passes = 0 / {}", m_descs.size());
-            return;
+            JUG_ASSERT(std::ranges::find(resolved.writeResources, resolved.rwResources[d]) == resolved.writeResources.end(), "Pass '{}': resource '{}' is read-write while it is an attachment of the pass's own frame buffer '{}'.", desc.name, desc.readWrites[d].name, desc.frameBufferName);
         }
     }
 
-    ResolveNames_();
-    BuildCompiledPasses_();
-    m_bDirty = false;
-}
-
-// 컴파일 2 단계. 검증 -> final pass 결정 -> 컬링 -> 해저드 해결 + 중복 바인드 제거.
-// 결과물인 CompiledPass 에는 문자열도 해시맵도 없다. 핸들, 평탄 슬롯, 비트마스크뿐.
-void RenderGraph::BuildCompiledPasses_()
-{
-#ifdef _DEBUG
-    // 디버그 검증.
-    // 1. final pass는 최대 1개만 존재해야 함.
-    // 2. read와 read-write, write가 겹치면 안됨.
-    // 3. ps 에 바인딩하는 read-write 리소스는 슬롯이 numRts 이상이어야함. (render target과 slot을 공유하기 때문에)
+    // 유틸리티 패스만 있는 그래프는 final pass 가 없어도 된다.
+    if (finalIndex == kInvalidIndex && lastIndex != kInvalidIndex)
     {
-        uint32_t numFinalMarks = 0;
-        for (size_t i = 0; i < m_descs.size(); ++i)
+        JUG_CORE_LOG_WARN("RenderGraph has no final output pass. Mark the last pass '{}' as the final output.", m_descs[lastIndex].name);
+        finalIndex = lastIndex;
+    }
+
+    if (finalIndex != kInvalidIndex && !alives[finalIndex])
+    {
+        alives[finalIndex] = true;
+        pending.push_back(finalIndex);
+    }
+
+    // 컬링. 뿌리에서 역방향 탐색해 "내가 사용하는 read, read-write 리소스를 write한 패스" 를 살린다.
+    // 실행 순서가 등록 순이라 뒤 패스가 앞 패스에게 다음 프레임으로 먹이는 구성도 가능하므로 위치를 따지지 않고 모든 writer 에 간선을 건다.
+    while (!pending.empty())
+    {
+        const ResolvedPass& reader = m_resolved[pending.back()];
+        pending.pop_back();
+
+        for (const Vector<ResourceRef>* pResources: { &reader.readResources, &reader.rwResources })
         {
-            const PassDesc&     desc     = m_descs[i];
-            const ResolvedPass& resolved = m_resolved[i];
-
-            if (desc.bFinalPass && desc.bEnable)
+            for (const ResourceRef resource: *pResources)
             {
-                ++numFinalMarks;
-            }
-
-            for (const ResourceRef& read: resolved.readRefs)
-            {
-                for (const ResourceRef& rw: resolved.readWriteRefs)
+                for (size_t w = 0; w < m_resolved.size(); ++w)
                 {
-                    JUG_ASSERT(read != rw, "Pass '{}' declares the same resource as both read and read-write.", desc.name);
-                }
-                for (const ResourceRef& write: resolved.writeRefs)
-                {
-                    JUG_ASSERT(read != write, "Pass '{}' reads a resource that is an attachment of its own frame buffer.", desc.name);
-                }
-            }
+                    if (alives[w])
+                    {
+                        continue;
+                    }
 
-            if (resolved.fbh)
-            {
-                const FrameBufferDesc& fb = Graphics::GetSingleton().GetDesc(resolved.fbh);
-                for (const BindDecl& decl: desc.readWrites)
-                {
-                    const uint32_t stage = decl.slot >> kSlotShift;
-                    const uint32_t local = decl.slot & kSlotMask;
-                    JUG_ASSERT(static_cast<eShaderRW>(stage) != eShaderRW::Pixel || local >= fb.numRts, "Pass '{}': pixel UAV slot {} is below the render target count {}.", desc.name, local, fb.numRts);
-                }
-            }
-        }
-        JUG_ASSERT(numFinalMarks <= 1, "More than one pass is marked as the final pass.");
-    }
-#endif
-
-    // final pass 결정. 마킹이 있으면 그 패스, 없으면 마지막 활성 패스.
-    size_t finalIndex = kInvalidIndex;
-    for (size_t i = 0; i < m_descs.size(); ++i)
-    {
-        if (!m_descs[i].bEnable)
-        {
-            continue;
-        }
-        if (m_descs[i].bFinalPass)
-        {
-            finalIndex = i;
-            break;
-        }
-        finalIndex = i;
-    }
-    JUG_ASSERT(finalIndex != kInvalidIndex, "No enabled pass exists.");
-
-    // 리소스별 writer 패스 집합. 프레임버퍼 어태치먼트와 read-write 둘 다 write 로 친다.
-    HashMap<uint64_t, Vector<size_t>> writers = {};
-    for (size_t i = 0; i < m_descs.size(); ++i)
-    {
-        if (!m_descs[i].bEnable)
-        {
-            continue;
-        }
-
-        const ResolvedPass& resolved = m_resolved[i];
-        for (const ResourceRef& ref: resolved.writeRefs)
-        {
-            writers[MakeResourceKey_(ref)].push_back(i);
-        }
-        for (const ResourceRef& ref: resolved.readWriteRefs)
-        {
-            writers[MakeResourceKey_(ref)].push_back(i);
-        }
-    }
-
-    // 컬링. 최종 출력에 영향을 미치지 못하는 패스를 잘라낸다.
-    // 뿌리 = { 사이드 이펙트 패스 } U { 모든 유틸리티 패스 }. 그래프 밖으로 결과가 새는 패스들이라
-    // 그래프 안에서 읽는 사람이 없어도 살려둔다.
-    // final pass 를 뿌리에 자동으로 넣지 않는다. 스왑체인에 그리는 것도 결국 그래프 밖으로 새는 출력이므로
-    // 저작자가 AsSideEffect 로 명시하는 게 맞다. 빠뜨리면 아래 assert 가 Debug 에서 잡는다.
-    Vector<bool>   bAlive = {};
-    Vector<size_t> stack  = {};
-    bAlive.resize(m_descs.size(), false);
-
-    for (size_t i = 0; i < m_descs.size(); ++i)
-    {
-        if (!m_descs[i].bEnable)
-        {
-            continue;
-        }
-        if (m_descs[i].bSideEffect || m_descs[i].type == ePass::Utility)
-        {
-            if (!bAlive[i])
-            {
-                bAlive[i] = true;
-                stack.push_back(i);
-            }
-        }
-    }
-
-    // 뿌리에서 역방향 BFS. "내가 읽는 리소스를 쓴 패스" 를 전부 살린다.
-    // 실행 순서가 등록 순이라 뒤 패스가 앞 패스에게 다음 프레임으로 먹이는 구성도 가능하므로
-    // 위치를 따지지 않고 모든 writer 에 간선을 건다. 과대근사라 더 많이 살아남는 쪽으로 틀린다.
-    while (!stack.empty())
-    {
-        const size_t        index    = stack.back();
-        const ResolvedPass& resolved = m_resolved[index];
-        stack.pop_back();
-
-        for (const ResourceRef& ref: resolved.readRefs)
-        {
-            const auto it = writers.find(MakeResourceKey_(ref));
-            if (it == writers.end())
-            {
-                continue;
-            }
-
-            for (const size_t writer: it->second)
-            {
-                if (writer != index && !bAlive[writer])
-                {
-                    bAlive[writer] = true;
-                    stack.push_back(writer);
-                }
-            }
-        }
-        for (const ResourceRef& ref: resolved.readWriteRefs)
-        {
-            const auto it = writers.find(MakeResourceKey_(ref));
-            if (it == writers.end())
-            {
-                continue;
-            }
-
-            for (const size_t writer: it->second)
-            {
-                if (writer != index && !bAlive[writer])
-                {
-                    bAlive[writer] = true;
-                    stack.push_back(writer);
+                    const ResolvedPass& writer = m_resolved[w];
+                    if (std::ranges::find(writer.writeResources, resource) != writer.writeResources.end()
+                        || std::ranges::find(writer.rwResources, resource) != writer.rwResources.end())
+                    {
+                        alives[w] = true;
+                        pending.push_back(w);
+                    }
                 }
             }
         }
     }
-
-    // BFS 가 끝난 뒤에 검사한다. final pass 가 쓴 걸 다른 뿌리가 읽어서 간접적으로 살아나는 경우가 있어
-    // 시딩 직후에 검사하면 멀쩡한 그래프에서 오탐이 난다.
-    JUG_ASSERT(bAlive[finalIndex], "Final pass '{}' is culled. Mark it with AsSideEffect.", m_descs[finalIndex].name);
 
     // 살아남은 패스만 등록 순서대로 싣는다.
-    m_compiledPasses.clear();
     for (size_t i = 0; i < m_descs.size(); ++i)
     {
         const PassDesc& desc = m_descs[i];
-
         if (!desc.bEnable)
         {
             JUG_CORE_LOG_TRACE("RenderGraph: pass '{}' culled. reason = disabled", desc.name);
             continue;
         }
 
-        if (!bAlive[i])
+        if (!alives[i])
         {
-            JUG_CORE_LOG_TRACE("RenderGraph: pass '{}' culled. reason = does not affect the final pass", desc.name);
+            JUG_CORE_LOG_TRACE("RenderGraph: pass '{}' culled. reason = does not affect the final output", desc.name);
             continue;
         }
 
-        CompiledPass& pass = m_compiledPasses.emplace_back();
-        pass.descIndex     = i;
-
+        m_compiledPasses.emplace_back().descIndex = i;
         JUG_CORE_LOG_TRACE("RenderGraph: pass '{}' kept. order = {}", desc.name, m_compiledPasses.size() - 1);
     }
 
-    JUG_CORE_LOG_TRACE("RenderGraph compiled. passes = {} / {}, final = '{}'", m_compiledPasses.size(), m_descs.size(), m_descs[finalIndex].name);
+    JUG_CORE_LOG_TRACE("RenderGraph compiled. passes = {} / {}", m_compiledPasses.size(), m_descs.size());
 
-    // 해저드 해결 + 바인드 최적화.
-    // 파이프라인의 바인딩 상태를 슬롯 배열로 미러링하며 패스를 순서대로 흘려본다.
-    // 리소스 -> 슬롯 역인덱스를 따로 두지 않는 이유: 슬롯 공간이 스테이지 x 16 뿐이라 선형 스캔이 충분하고,
-    // 축출이 그냥 덮어쓰기가 돼서 "같은 슬롯에 다른 리소스" / "read -> write -> 같은 슬롯 read" / ABA 가 저절로 풀린다.
-    ARRAY<ResourceRef, kNumReadSlots>             liveRead    = {};
-    ARRAY<ResourceRef, kNumReadWriteSlots>        liveRW      = {};
-    ARRAY<ConstantBufferHandle, kNumCBufferSlots> liveCBuffer = {};
-    ARRAY<Sampler, kNumSamplerSlots>              liveSampler = {};
-    Vector<ResourceRef>                           liveWrites  = {};
+    // 해저드 해결. 파이프라인의 read / read-write / 프레임버퍼 바인딩 상태만 흉내 낸다.
+    // 중복 바인드 제거는 여기서 하지 않는다. executor 가 같은 슬롯을 덮어쓸 수 있어 그래프는 슬롯의 주인이 아니고, Graphics::Set* 가 실제 상태와 비교해 이미 거른다.
+    ARRAY<ResourceRef, kNumReadSlots>      liveRead   = {};
+    ARRAY<ResourceRef, kNumReadWriteSlots> liveRW     = {};
+    Span<const ResourceRef>                liveWrites = {};
 
     // 두 바퀴 도는 이유 -> 마지막 패스의 종료 상태가 다음 프레임 첫 패스의 시작 상태라 거기서도 충돌할 수 있다.
-    // 1 회차는 상태가 비어 있어(= 보수적) 바인드 커맨드만 걷고, 2 회차는 상태가 수렴한 뒤라 언바인드만 기록한다.
-    // 각 슬롯의 최종 상태는 그 슬롯을 마지막으로 건드린 패스가 정하므로 한 바퀴면 고정점에 도달한다.
     const size_t numPasses = m_compiledPasses.size();
     for (size_t step = 0; step < numPasses * 2; ++step)
     {
-        const bool    bFirstLap = step < numPasses;
-        CompiledPass& pass      = m_compiledPasses[step % numPasses];
+        CompiledPass& pass = m_compiledPasses[step % numPasses];
 
         const PassDesc&     desc     = m_descs[pass.descIndex];
         const ResolvedPass& resolved = m_resolved[pass.descIndex];
@@ -1201,170 +1056,93 @@ void RenderGraph::BuildCompiledPasses_()
         bool     bUnbindFrameBuffer = false;
 
         // read 하려는 리소스가 UAV 로 살아 있으면 그 UAV 를, RTV 로 살아 있으면 프레임버퍼를 끊는다.
-        for (const ResourceRef& ref: resolved.readRefs)
+        for (const ResourceRef resource: resolved.readResources)
         {
             for (uint32_t s = 0; s < kNumReadWriteSlots; ++s)
             {
-                if (liveRW[s] && liveRW[s] == ref)
+                if (liveRW[s] == resource)
                 {
                     rwUnbindMask |= 1ull << s;
                 }
             }
-            for (const ResourceRef& write: liveWrites)
-            {
-                if (write == ref)
-                {
-                    bUnbindFrameBuffer = true;
-                    break;
-                }
-            }
+            bUnbindFrameBuffer |= std::ranges::find(liveWrites, resource) != liveWrites.end();
         }
 
         // read-write 하려는 리소스가 SRV 로 살아 있으면 그 SRV 를, RTV 로 살아 있으면 프레임버퍼를 끊는다.
-        for (const ResourceRef& ref: resolved.readWriteRefs)
+        for (const ResourceRef resource: resolved.rwResources)
         {
             for (uint32_t s = 0; s < kNumReadSlots; ++s)
             {
-                if (liveRead[s] && liveRead[s] == ref)
+                if (liveRead[s] == resource)
                 {
                     readUnbindMask |= 1ull << s;
                 }
             }
-            for (const ResourceRef& write: liveWrites)
-            {
-                if (write == ref)
-                {
-                    bUnbindFrameBuffer = true;
-                    break;
-                }
-            }
+            bUnbindFrameBuffer |= std::ranges::find(liveWrites, resource) != liveWrites.end();
         }
 
         // 어태치먼트로 write 하려는 리소스가 SRV/UAV 로 살아 있으면 그 슬롯을 끊는다.
-        for (const ResourceRef& ref: resolved.writeRefs)
+        for (const ResourceRef resource: resolved.writeResources)
         {
             for (uint32_t s = 0; s < kNumReadSlots; ++s)
             {
-                if (liveRead[s] && liveRead[s] == ref)
+                if (liveRead[s] == resource)
                 {
                     readUnbindMask |= 1ull << s;
                 }
             }
             for (uint32_t s = 0; s < kNumReadWriteSlots; ++s)
             {
-                if (liveRW[s] && liveRW[s] == ref)
+                if (liveRW[s] == resource)
                 {
                     rwUnbindMask |= 1ull << s;
                 }
             }
         }
 
-        // 2회차 것만 최종 결과로 남긴다.
-        if (!bFirstLap)
-        {
-            pass.readUnbindMask     = readUnbindMask;
-            pass.rwUnbindMask       = rwUnbindMask;
-            pass.bUnbindFrameBuffer = bUnbindFrameBuffer;
-        }
+        // 2 회차가 1 회차 값을 덮어써서 수렴한 상태 기준 값만 남는다.
+        pass.readUnbindMask     = readUnbindMask;
+        pass.rwUnbindMask       = rwUnbindMask;
+        pass.bUnbindFrameBuffer = bUnbindFrameBuffer;
 
         // 방금 정한 언바인드를 시뮬레이션 상태에도 그대로 반영한다.
-        // 1 회차에도 반영해야 한다. 안 그러면 2 회차 시작 상태가 실제 GPU 상태와 어긋난다.
-        // 마스크 순회는 최하위 선 비트를 훑고(std::countr_zero) mask &= mask - 1 로 지운다.
+        for (uint64_t mask = readUnbindMask; mask != 0; mask &= mask - 1)
         {
-            uint64_t mask = readUnbindMask;
-            while (mask != 0)
-            {
-                const uint64_t s = std::countr_zero(mask);
-                mask &= mask - 1;
-                liveRead[s] = ResourceRef {};
-            }
-
-            mask = rwUnbindMask;
-            while (mask != 0)
-            {
-                const uint64_t s = std::countr_zero(mask);
-                mask &= mask - 1;
-                liveRW[s] = ResourceRef {};
-            }
-
-            if (bUnbindFrameBuffer)
-            {
-                liveWrites.clear();
-            }
+            liveRead[std::countr_zero(mask)] = ResourceRef {};
+        }
+        for (uint64_t mask = rwUnbindMask; mask != 0; mask &= mask - 1)
+        {
+            liveRW[std::countr_zero(mask)] = ResourceRef {};
+        }
+        if (bUnbindFrameBuffer)
+        {
+            liveWrites = {};
         }
 
-        // 바인드 커맨드 수집 + 가상 바인드. 같은 슬롯에 이미 같은 값이 있으면 커맨드를 내지 않는다 (중복 바인드 제거).
-        // 수집은 1 회차에서만 한다. 2 회차는 같은 패스를 다시 도는 거라 또 담으면 커맨드가 두 배가 된다.
-        // 상태 갱신(live* 대입)은 두 회차 모두 한다.
-        for (size_t d = 0; d < resolved.cbufferHandles.size(); ++d)
+        // 가상 바인드
+        for (size_t d = 0; d < resolved.readResources.size(); ++d)
         {
-            const uint32_t             slot = desc.cbuffers[d].slot;
-            const ConstantBufferHandle cbh  = resolved.cbufferHandles[d];
-
-            if (bFirstLap && liveCBuffer[slot] != cbh)
-            {
-                CBufferBind& bind = pass.cbuffers.emplace_back();
-                bind.cbh          = cbh;
-                bind.slot         = slot;
-            }
-            liveCBuffer[slot] = cbh;
+            liveRead[desc.reads[d].slot] = resolved.readResources[d];
         }
 
-        for (size_t d = 0; d < desc.samplers.size(); ++d)
+        for (size_t d = 0; d < resolved.rwResources.size(); ++d)
         {
-            const SamplerDecl& decl = desc.samplers[d];
-
-            if (bFirstLap && !(liveSampler[decl.slot] == decl.state))
-            {
-                SamplerBind& bind = pass.samplers.emplace_back();
-                bind.state        = decl.state;
-                bind.slot         = decl.slot;
-            }
-            liveSampler[decl.slot] = decl.state;
-        }
-
-        for (size_t d = 0; d < resolved.readRefs.size(); ++d)
-        {
-            const uint32_t     slot = desc.reads[d].slot;
-            const ResourceRef& ref  = resolved.readRefs[d];
-
-            if (bFirstLap && liveRead[slot] != ref)
-            {
-                ResourceBind& bind = pass.reads.emplace_back();
-                bind.resource           = ref;
-                bind.slot          = slot;
-            }
-            liveRead[slot] = ref;
-        }
-
-        for (size_t d = 0; d < resolved.readWriteRefs.size(); ++d)
-        {
-            const uint32_t     slot = desc.readWrites[d].slot;
-            const ResourceRef& ref  = resolved.readWriteRefs[d];
-
-            if (bFirstLap && liveRW[slot] != ref)
-            {
-                ResourceBind& bind = pass.readWrites.emplace_back();
-                bind.resource           = ref;
-                bind.slot          = slot;
-            }
-            liveRW[slot] = ref;
+            liveRW[desc.readWrites[d].slot] = resolved.rwResources[d];
         }
 
         // 프레임버퍼를 가진 패스만 write 상태를 갈아끼운다.
-        // 컴퓨트 패스는 OM 을 건드리지 않으므로 직전 렌더 패스의 프레임버퍼가 그대로 물려 있다.
         if (resolved.fbh)
         {
-            liveWrites = resolved.writeRefs;
+            liveWrites = resolved.writeResources;
         }
     }
+
+    m_bDirty = false;
 }
 
-// 컴파일된 목록을 순서대로 재생한다. 여기서는 판단을 하지 않는다 -- 전부 컴파일 때 정해져 있다.
-// 전제: 이 구간 동안 그래프 밖에서 바인딩을 직접 건드리지 않는다. 건드리면 컴파일된 언바인드 목록이 그 프레임만 어긋난다.
 void RenderGraph::Execute()
 {
-    CompileIfNeed_();
+    Compile_();
 
     Graphics& gfx = Graphics::GetSingleton();
 
@@ -1384,8 +1162,7 @@ void RenderGraph::Execute()
         }
         else
         {
-            // 이 패스가 바인딩하려는 리소스가 직전 패스에 다른 용도로 물려 있으면 먼저 끊는다.
-            // 끊을 게 하나도 없으면 분기 하나로 통째 건너뛴다. Touch 도 안 나간다.
+            // 바인딩하려는 리소스가 직전 패스에 다른 용도로 물려 있으면 먼저 끊는다.
             if (pass.readUnbindMask != 0 || pass.rwUnbindMask != 0 || pass.bUnbindFrameBuffer)
             {
                 uint64_t mask = pass.readUnbindMask;
@@ -1409,13 +1186,10 @@ void RenderGraph::Execute()
                     gfx.SetFrameBuffer(kNullHandle);
                 }
 
-                // Set* 은 셰도우 캐시에만 쓰고 끝난다. 여기서 Touch 로 한 번 플러시해야
-                // 다음 바인드보다 먼저 언바인드가 GPU 에 나간다. 이게 빠지면 해저드 해결이 통째로 무의미해진다.
                 gfx.Touch();
             }
 
-            // 컴퓨트는 프로그램만. 래스터 상태와 OM 은 렌더 패스에서만 세팅한다.
-            if (desc.type == ePass::Compute)
+            if (desc.type == ePass::Compute)   // 컴퓨트는 프로그램만 바인딩
             {
                 gfx.SetComputeProgram(resolved.ph);
             }
@@ -1436,7 +1210,17 @@ void RenderGraph::Execute()
                 }
 
                 gfx.SetFrameBuffer(resolved.fbh);
-                gfx.SetViewport(resolved.viewportX, resolved.viewportY, resolved.viewportW, resolved.viewportH);
+
+                // 프레임버퍼 크기는 컴파일 뒤에도 바뀐다 (스왑체인 리사이즈는 핸들이 그대로라 그래프가 모른다). 그래서 매 프레임 읽는다.
+                if (desc.bViewportFromFrameBuffer)
+                {
+                    const TextureDesc& tex = gfx.GetDesc(gfx.GetDesc(resolved.fbh).atts[0].texh);
+                    gfx.SetViewport(0.f, 0.f, static_cast<float>(tex.width), static_cast<float>(tex.height));
+                }
+                else
+                {
+                    gfx.SetViewport(desc.viewportX, desc.viewportY, desc.viewportW, desc.viewportH);
+                }
 
                 if (desc.renderState & eRenderState::Scissor)
                 {
@@ -1454,46 +1238,47 @@ void RenderGraph::Execute()
                 }
             }
 
-            // 컴파일 때 중복이 제거된 목록이다. 평탄 슬롯을 다시 (스테이지, 슬롯) 으로 편다.
-            for (const CBufferBind& bind: pass.cbuffers)
+            // 선언한 바인드는 매 패스 전부 낸다. 같은 값이면 Graphics::Set* 가 비교 한 번으로 거른다.
+            for (size_t d = 0; d < resolved.cbufferHandles.size(); ++d)
             {
-                gfx.SetConstantBuffer(bind.cbh, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
+                const uint32_t slot = desc.cbuffers[d].slot;
+                gfx.SetConstantBuffer(resolved.cbufferHandles[d], static_cast<eShader>(slot >> kSlotShift), slot & kSlotMask);
             }
 
-            for (const SamplerBind& bind: pass.samplers)
+            for (const SamplerDecl& decl: desc.samplers)
             {
-                gfx.SetSampler(bind.state.flags, bind.state.border, static_cast<eShader>(bind.slot >> kSlotShift), bind.slot & kSlotMask);
+                gfx.SetSampler(decl.state.flags, decl.state.border, static_cast<eShader>(decl.slot >> kSlotShift), decl.slot & kSlotMask);
             }
 
-            // SRV 바인드. 참조가 텍스처냐 스토리지 버퍼냐에 따라 호출이 갈린다.
-            for (const ResourceBind& bind: pass.reads)
+            for (size_t d = 0; d < resolved.readResources.size(); ++d)
             {
-                const eShader  shader = static_cast<eShader>(bind.slot >> kSlotShift);
-                const uint32_t slot   = bind.slot & kSlotMask;
+                const ResourceRef resource = resolved.readResources[d];
+                const eShader     shader   = static_cast<eShader>(desc.reads[d].slot >> kSlotShift);
+                const uint32_t    slot     = desc.reads[d].slot & kSlotMask;
 
-                if (bind.resource.GetType() == eResource::Texture)
+                if (resource.GetType() == eResource::Texture)
                 {
-                    gfx.SetTexture(bind.resource.GetTextureHandle(), shader, slot);
+                    gfx.SetTexture(resource.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    gfx.SetBuffer(bind.resource.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBuffer(resource.GetStorageBufferHandle(), shader, slot);
                 }
             }
 
-            // UAV 바인드. PS 단계는 OM 슬롯 공간을 렌더 타겟과 나눠 쓰므로 슬롯이 numRts 이상이어야 한다 (디버그에서 검증).
-            for (const ResourceBind& bind: pass.readWrites)
+            for (size_t d = 0; d < resolved.rwResources.size(); ++d)
             {
-                const eShaderRW shader = static_cast<eShaderRW>(bind.slot >> kSlotShift);
-                const uint32_t  slot   = bind.slot & kSlotMask;
+                const ResourceRef resource = resolved.rwResources[d];
+                const eShaderRW   shader   = static_cast<eShaderRW>(desc.readWrites[d].slot >> kSlotShift);
+                const uint32_t    slot     = desc.readWrites[d].slot & kSlotMask;
 
-                if (bind.resource.GetType() == eResource::Texture)
+                if (resource.GetType() == eResource::Texture)
                 {
-                    gfx.SetTextureRW(bind.resource.GetTextureHandle(), shader, slot);
+                    gfx.SetTextureRW(resource.GetTextureHandle(), shader, slot);
                 }
                 else
                 {
-                    gfx.SetBufferRW(bind.resource.GetStorageBufferHandle(), shader, slot);
+                    gfx.SetBufferRW(resource.GetStorageBufferHandle(), shader, slot);
                 }
             }
 

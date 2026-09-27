@@ -17,18 +17,18 @@ namespace
         VECTOR2 texCoord = Zero<VECTOR2>();
     };
 
-    QUATERNION MakeAxisRotation_(
+    QUAT MakeAxisRotation_(
         const VECTOR3 _normal)
     {
         JUG_ASSERT(!IsZeroApprox(_normal), "GeometryFactory - Axis normal must not be zero");
-        return QUATERNION::MakeFromTo(Up<VECTOR3>(), Normalize(_normal));
+        return QUAT::MakeFromTo(Up<VECTOR3>(), Normalize(_normal));
     }
 
     GeometryFactoryResult Pack_(
         const Span<Vertex>&   _vertices,
         const Span<uint32_t>& _indices,
         const VertexLayout&   _vl,
-        const QUATERNION      _rotation)
+        const QUAT      _rotation)
     {
         JUG_ASSERT(_vl.Has(eVertexAttribute::Position), "GeometryFactory - VertexLayout must have a position attribute");
 
@@ -260,7 +260,7 @@ GeometryFactoryResult CreateSphere(
     }
     indices.ResizeUninitialized(iIndex);
 
-    return Pack_(vertices, indices, _vl, QUATERNION::kIdentity);
+    return Pack_(vertices, indices, _vl, QUAT::kIdentity);
 }
 
 GeometryFactoryResult CreateCylinder(
@@ -601,7 +601,7 @@ GeometryFactoryResult CreateCapsule(
     }
     indices.ResizeUninitialized(iIndex);
 
-    return Pack_(vertices, indices, _vl, QUATERNION::kIdentity);
+    return Pack_(vertices, indices, _vl, QUAT::kIdentity);
 }
 
 }   // namespace jug

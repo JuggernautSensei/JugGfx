@@ -20,36 +20,56 @@ ImGuiTextureRef::ImGuiTextureRef(
     const uint32_t      _mip,
     const uint32_t      _layer,
     const eCubeFace     _face)
-    : texh(_texh)
-    , mip(_mip)
-    , layer(_layer)
-    , face(_face)
+    : m_texh(_texh)
+    , m_mip(_mip)
+    , m_layer(_layer)
+    , m_face(_face)
 {
 }
 
 ImGuiTextureRef::ImGuiTextureRef(
     const ImTextureID _id)
-    : texh(TextureHandle { static_cast<uint32_t>(_id) })
-    , mip((_id >> kTexIdMipShift) & kTexIdMipMask)
-    , layer(static_cast<uint32_t>((_id >> kTexIdLayerShift) & kTexIdLayerMask))
-    , face(static_cast<eCubeFace>((_id >> kTexIdFaceShift) & kTexIdFaceMask))
+    : m_texh(TextureHandle { static_cast<uint32_t>(_id) })
+    , m_mip((_id >> kTexIdMipShift) & kTexIdMipMask)
+    , m_layer(static_cast<uint32_t>((_id >> kTexIdLayerShift) & kTexIdLayerMask))
+    , m_face(static_cast<eCubeFace>((_id >> kTexIdFaceShift) & kTexIdFaceMask))
 {
 }
 
 ImTextureID ImGuiTextureRef::ToImTextureID() const
 {
     static_assert(sizeof(ImTextureID) >= sizeof(uint64_t), "ImGuiRenderer requires a 64-bit ImTextureID.");
-    JUG_ASSERT(texh, "ToImTextureID requires a valid texture handle.");
+    JUG_ASSERT(m_texh, "ToImTextureID requires a valid texture handle.");
 
-    JUG_ASSERT(mip <= kTexIdMipMask, "ImGuiTextureRef::mip is out of the packable range.");
-    JUG_ASSERT(layer <= kTexIdLayerMask, "ImGuiTextureRef::layer is out of the packable range.");
+    JUG_ASSERT(m_mip <= kTexIdMipMask, "ImGuiTextureRef::mip is out of the packable range.");
+    JUG_ASSERT(m_layer <= kTexIdLayerMask, "ImGuiTextureRef::layer is out of the packable range.");
 
     ImTextureID id = kTexIdValidBit;
-    id |= static_cast<ImTextureID>(texh.GetValue());
-    id |= (mip & kTexIdMipMask) << kTexIdMipShift;
-    id |= (static_cast<ImTextureID>(face) & kTexIdFaceMask) << kTexIdFaceShift;
-    id |= (static_cast<ImTextureID>(layer) & kTexIdLayerMask) << kTexIdLayerShift;
+    id |= static_cast<ImTextureID>(m_texh.GetValue());
+    id |= (m_mip & kTexIdMipMask) << kTexIdMipShift;
+    id |= (static_cast<ImTextureID>(m_face) & kTexIdFaceMask) << kTexIdFaceShift;
+    id |= (static_cast<ImTextureID>(m_layer) & kTexIdLayerMask) << kTexIdLayerShift;
     return id;
+}
+
+TextureHandle ImGuiTextureRef::GetTextureHandle() const
+{
+    return m_texh;
+}
+
+uint32_t ImGuiTextureRef::GetMip() const
+{
+    return m_mip;
+}
+
+uint32_t ImGuiTextureRef::GetLayer() const
+{
+    return m_layer;
+}
+
+eCubeFace ImGuiTextureRef::GetFace() const
+{
+    return m_face;
 }
 
 }   // namespace jug

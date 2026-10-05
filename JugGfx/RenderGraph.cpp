@@ -50,7 +50,7 @@ namespace
         const bool       _bOwnership)
     {
         JUG_ASSERT(!_name.empty(), "Resource name must not be empty.");
-        JUG_ASSERT(_handle, "Cannot register a null handle. name = '{}'", _name);
+        JUG_ASSERT(_handle, "Cannot register an invalid handle. name = '{}'", _name);
         JUG_ASSERT(!_map.contains(_name), "Resource '{}' is already registered.", _name);
 
         _map.emplace(String { _name }, Mapped { _handle, _bOwnership });
@@ -63,7 +63,7 @@ namespace
         const Handle     _handle)
     {
         JUG_ASSERT(!_name.empty(), "Resource name must not be empty.");
-        JUG_ASSERT(_handle, "Cannot replace with a null handle. name = '{}'", _name);
+        JUG_ASSERT(_handle, "Cannot replace with an invalid handle. name = '{}'", _name);
 
         const auto it = _map.find(_name);
         if (it == _map.end())
@@ -142,9 +142,9 @@ RenderGraph::UtilityPassBuilder& RenderGraph::UtilityPassBuilder::Enable(
 }
 
 RenderGraph::UtilityPassBuilder& RenderGraph::UtilityPassBuilder::SetExecutor(
-    const Callable<void()>& _executor)
+    const Callable<void()>& _executorOrNull)
 {
-    m_pGraph->GetPassDesc_(m_index).executor = _executor;
+    m_pGraph->GetPassDesc_(m_index).executorOrNull = _executorOrNull;
     return *this;
 }
 
@@ -223,19 +223,19 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::SetScissor(
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::SetRenderState(
     const Flags<eRenderState> _flags)
 {
-    m_pGraph->GetPassDesc_(m_index).renderState = _flags;
+    m_pGraph->GetPassDesc_(m_index).renderStateFlags = _flags;
     return *this;
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::SetStencil(
-    const Flags<eStencil> _front,
-    const Flags<eStencil> _back,
+    const Flags<eStencil> _frontFlags,
+    const Flags<eStencil> _backFlags,
     const uint8_t         _stencilRef)
 {
-    PassDesc& desc    = m_pGraph->GetPassDesc_(m_index);
-    desc.frontStencil = _front;
-    desc.backStencil  = _back;
-    desc.stencilRef   = _stencilRef;
+    PassDesc& desc         = m_pGraph->GetPassDesc_(m_index);
+    desc.frontStencilFlags = _frontFlags;
+    desc.backStencilFlags  = _backFlags;
+    desc.stencilRef        = _stencilRef;
     return *this;
 }
 
@@ -365,9 +365,9 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::SetSampler(
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::SetExecutor(
-    const Callable<void()>& _executor)
+    const Callable<void()>& _executorOrNull)
 {
-    m_pGraph->GetPassDesc_(m_index).executor = _executor;
+    m_pGraph->GetPassDesc_(m_index).executorOrNull = _executorOrNull;
     return *this;
 }
 
@@ -475,9 +475,9 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::SetSampler(
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::SetExecutor(
-    const Callable<void()>& _executor)
+    const Callable<void()>& _executorOrNull)
 {
-    m_pGraph->GetPassDesc_(m_index).executor = _executor;
+    m_pGraph->GetPassDesc_(m_index).executorOrNull = _executorOrNull;
     return *this;
 }
 
@@ -524,16 +524,16 @@ size_t RenderGraph::GetOrAddPass_(
 {
     JUG_ASSERT(!_name.empty(), "Pass name must not be empty.");
 
-    const size_t index = FindPassIndexOrInvalid_(_name);
+    const size_t indexOrInvalid = FindPassIndexOrInvalid_(_name);
 
     if (_bMustExist)
     {
-        JUG_ASSERT(index != kInvalidIndex, "Pass '{}' does not exist.", _name);
-        JUG_ASSERT(m_descs[index].type == _type, "Pass '{}' was declared with a different pass type.", _name);
-        return index;
+        JUG_ASSERT(IsValid(indexOrInvalid), "Pass '{}' does not exist.", _name);
+        JUG_ASSERT(m_descs[indexOrInvalid].type == _type, "Pass '{}' was declared with a different pass type.", _name);
+        return indexOrInvalid;
     }
 
-    JUG_ASSERT(index == kInvalidIndex, "Pass '{}' is already registered.", _name);
+    JUG_ASSERT(!IsValid(indexOrInvalid), "Pass '{}' is already registered.", _name);
 
     PassDesc& desc = m_descs.emplace_back();
     desc.name      = _name;
@@ -582,20 +582,20 @@ RenderGraph::UtilityPassBuilder RenderGraph::ModifyUtilityPass(
 void RenderGraph::RemovePass(
     const StringView _name)
 {
-    const size_t index = FindPassIndexOrInvalid_(_name);
-    if (index == kInvalidIndex)
+    const size_t indexOrInvalid = FindPassIndexOrInvalid_(_name);
+    if (!IsValid(indexOrInvalid))
     {
         return;
     }
 
-    m_descs.erase(m_descs.begin() + static_cast<ptrdiff_t>(index));
+    m_descs.erase(m_descs.begin() + static_cast<ptrdiff_t>(indexOrInvalid));
     m_bDirty = true;
 }
 
 bool RenderGraph::HasPass(
     const StringView _name) const
 {
-    return FindPassIndexOrInvalid_(_name) != kInvalidIndex;
+    return IsValid(FindPassIndexOrInvalid_(_name));
 }
 
 void RenderGraph::Insert(
@@ -832,6 +832,9 @@ void RenderGraph::Compile_()
         return;
     }
 
+    Timer timer = {};
+    timer.Start();
+
     Graphics& gfx = Graphics::GetSingleton();
 
     m_resolved.clear();
@@ -842,8 +845,8 @@ void RenderGraph::Compile_()
     Vector<size_t> pending = {};   // 임시 패스
     pending.reserve(m_descs.size());
 
-    size_t finalIndex = kInvalidIndex;
-    size_t lastIndex  = kInvalidIndex;
+    size_t finalIndexOrInvalid = kInvalidIndex;
+    size_t lastIndexOrInvalid  = kInvalidIndex;
     for (size_t i = 0; i < m_descs.size(); ++i)
     {
         const PassDesc& desc = m_descs[i];
@@ -867,11 +870,11 @@ void RenderGraph::Compile_()
         }
 
         // final pass 는 마킹이 있으면 그 패스, 없으면 마지막 활성 렌더/컴퓨트 패스.
-        lastIndex = i;
+        lastIndexOrInvalid = i;
         if (desc.bFinalOutput)
         {
-            JUG_ASSERT(finalIndex == kInvalidIndex, "More than one pass is marked as the final output. '{}' and '{}'", m_descs[finalIndex].name, desc.name);
-            finalIndex = i;
+            JUG_ASSERT(!IsValid(finalIndexOrInvalid), "More than one pass is marked as the final output. '{}' and '{}'", m_descs[finalIndexOrInvalid].name, desc.name);
+            finalIndexOrInvalid = i;
         }
 
         // 이름 기반 리소스를 실제 리소스 핸들로 리졸브
@@ -889,7 +892,7 @@ void RenderGraph::Compile_()
 
         if (!desc.frameBufferName.empty())
         {
-            resolved.fbh = GetFrameBuffer(desc.frameBufferName);
+            resolved.fbhOrInvalid = GetFrameBuffer(desc.frameBufferName);
         }
 
         // read 리소스 수집
@@ -936,9 +939,9 @@ void RenderGraph::Compile_()
         }
 
         // write 리소스는 프레임 버퍼에서 유도
-        if (resolved.fbh)
+        if (resolved.fbhOrInvalid)
         {
-            const FrameBufferDesc& fb = gfx.GetDesc(resolved.fbh);
+            const FrameBufferDesc& fb = gfx.GetDesc(resolved.fbhOrInvalid);
             JUG_ASSERT(fb.GetNumAttachments() > 0, "Render pass '{}' has no attachments in its frame buffer '{}'.", desc.name, desc.frameBufferName);
 
             JUG_ASSERT(!desc.bViewportFromFrameBuffer || fb.atts[0].texh, "Render pass '{}': viewport comes from the first attachment of frame buffer '{}', but it is empty.", desc.name, desc.frameBufferName);
@@ -966,16 +969,16 @@ void RenderGraph::Compile_()
     }
 
     // 유틸리티 패스만 있는 그래프는 final pass 가 없어도 된다.
-    if (finalIndex == kInvalidIndex && lastIndex != kInvalidIndex)
+    if (!IsValid(finalIndexOrInvalid) && IsValid(lastIndexOrInvalid))
     {
-        JUG_CORE_LOG_WARN("RenderGraph has no final output pass. Mark the last pass '{}' as the final output.", m_descs[lastIndex].name);
-        finalIndex = lastIndex;
+        JUG_CORE_LOG_WARN("RenderGraph has no final output pass. Mark the last pass '{}' as the final output.", m_descs[lastIndexOrInvalid].name);
+        finalIndexOrInvalid = lastIndexOrInvalid;
     }
 
-    if (finalIndex != kInvalidIndex && !alives[finalIndex])
+    if (IsValid(finalIndexOrInvalid) && !alives[finalIndexOrInvalid])
     {
-        alives[finalIndex] = true;
-        pending.push_back(finalIndex);
+        alives[finalIndexOrInvalid] = true;
+        pending.push_back(finalIndexOrInvalid);
     }
 
     // 컬링. 뿌리에서 역방향 탐색해 "내가 사용하는 read, read-write 리소스를 write한 패스" 를 살린다.
@@ -1028,10 +1031,7 @@ void RenderGraph::Compile_()
         JUG_CORE_LOG_TRACE("RenderGraph: pass '{}' kept. order = {}", desc.name, m_compiledPasses.size() - 1);
     }
 
-    JUG_CORE_LOG_TRACE("RenderGraph compiled. passes = {} / {}", m_compiledPasses.size(), m_descs.size());
-
     // 해저드 해결. 파이프라인의 read / read-write / 프레임버퍼 바인딩 상태만 흉내 낸다.
-    // 중복 바인드 제거는 여기서 하지 않는다. executor 가 같은 슬롯을 덮어쓸 수 있어 그래프는 슬롯의 주인이 아니고, Graphics::Set* 가 실제 상태와 비교해 이미 거른다.
     ARRAY<ResourceRef, kNumReadSlots>      liveRead   = {};
     ARRAY<ResourceRef, kNumReadWriteSlots> liveRW     = {};
     Span<const ResourceRef>                liveWrites = {};
@@ -1131,13 +1131,24 @@ void RenderGraph::Compile_()
         }
 
         // 프레임버퍼를 가진 패스만 write 상태를 갈아끼운다.
-        if (resolved.fbh)
+        if (resolved.fbhOrInvalid)
         {
             liveWrites = resolved.writeResources;
         }
     }
 
     m_bDirty = false;
+
+    // logging
+    timer.Stop();
+    const ReadableTimeF time = ToReadableTimeF(timer.GetTotalCount());
+    JUG_CORE_LOG_TRACE(
+        "RenderGraph compiled in {:.3f} {}. passes = {} / {} (culled {})",
+        time.time,
+        time.unitName,
+        m_compiledPasses.size(),
+        m_descs.size(),
+        m_descs.size() - m_compiledPasses.size());
 }
 
 void RenderGraph::Execute()
@@ -1155,9 +1166,9 @@ void RenderGraph::Execute()
 
         if (desc.type == ePass::Utility)
         {
-            if (desc.executor)
+            if (desc.executorOrNull)
             {
-                desc.executor();
+                desc.executorOrNull();
             }
         }
         else
@@ -1170,7 +1181,7 @@ void RenderGraph::Execute()
                 {
                     const uint32_t s = static_cast<uint32_t>(std::countr_zero(mask));
                     mask &= mask - 1;
-                    gfx.SetTexture(kNullHandle, static_cast<eShader>(s >> kSlotShift), s & kSlotMask);
+                    gfx.SetTexture(kInvalidHandle, static_cast<eShader>(s >> kSlotShift), s & kSlotMask);
                 }
 
                 mask = pass.rwUnbindMask;
@@ -1178,12 +1189,12 @@ void RenderGraph::Execute()
                 {
                     const uint32_t s = static_cast<uint32_t>(std::countr_zero(mask));
                     mask &= mask - 1;
-                    gfx.SetTextureRW(kNullHandle, static_cast<eShaderRW>(s >> kSlotShift), s & kSlotMask);
+                    gfx.SetTextureRW(kInvalidHandle, static_cast<eShaderRW>(s >> kSlotShift), s & kSlotMask);
                 }
 
                 if (pass.bUnbindFrameBuffer)
                 {
-                    gfx.SetFrameBuffer(kNullHandle);
+                    gfx.SetFrameBuffer(kInvalidHandle);
                 }
 
                 gfx.Touch();
@@ -1196,8 +1207,8 @@ void RenderGraph::Execute()
             else
             {
                 gfx.SetProgram(resolved.ph);
-                gfx.SetRenderState(desc.renderState);
-                gfx.SetStencil(desc.frontStencil, desc.backStencil, desc.stencilRef);
+                gfx.SetRenderState(desc.renderStateFlags);
+                gfx.SetStencil(desc.frontStencilFlags, desc.backStencilFlags, desc.stencilRef);
 
                 for (const BlendDecl& blend: desc.blends)
                 {
@@ -1209,12 +1220,12 @@ void RenderGraph::Execute()
                     gfx.SetBlendFactor(desc.blendFactor);
                 }
 
-                gfx.SetFrameBuffer(resolved.fbh);
+                gfx.SetFrameBuffer(resolved.fbhOrInvalid);
 
                 // 프레임버퍼 크기는 컴파일 뒤에도 바뀐다 (스왑체인 리사이즈는 핸들이 그대로라 그래프가 모른다). 그래서 매 프레임 읽는다.
                 if (desc.bViewportFromFrameBuffer)
                 {
-                    const TextureDesc& tex = gfx.GetDesc(gfx.GetDesc(resolved.fbh).atts[0].texh);
+                    const TextureDesc& tex = gfx.GetDesc(gfx.GetDesc(resolved.fbhOrInvalid).atts[0].texh);
                     gfx.SetViewport(0.f, 0.f, static_cast<float>(tex.width), static_cast<float>(tex.height));
                 }
                 else
@@ -1222,19 +1233,19 @@ void RenderGraph::Execute()
                     gfx.SetViewport(desc.viewportX, desc.viewportY, desc.viewportW, desc.viewportH);
                 }
 
-                if (desc.renderState & eRenderState::Scissor)
+                if (desc.renderStateFlags & eRenderState::Scissor)
                 {
                     gfx.SetScissor(desc.scissorX, desc.scissorY, desc.scissorW, desc.scissorH);
                 }
 
                 for (const ClearDecl& clear: desc.renderTargetClears)
                 {
-                    gfx.ClearRenderTarget(resolved.fbh, clear.color, clear.slot);
+                    gfx.ClearRenderTarget(resolved.fbhOrInvalid, clear.color, clear.slot);
                 }
 
                 if (desc.bClearDepth || desc.bClearStencil)
                 {
-                    gfx.ClearDepthStencil(resolved.fbh, desc.bClearDepth, desc.bClearStencil, desc.depthClearValue, desc.stencilClearValue);
+                    gfx.ClearDepthStencil(resolved.fbhOrInvalid, desc.bClearDepth, desc.bClearStencil, desc.depthClearValue, desc.stencilClearValue);
                 }
             }
 
@@ -1282,9 +1293,9 @@ void RenderGraph::Execute()
                 }
             }
 
-            if (desc.executor)
+            if (desc.executorOrNull)
             {
-                desc.executor();
+                desc.executorOrNull();
             }
         }
 

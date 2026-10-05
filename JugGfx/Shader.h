@@ -38,49 +38,37 @@ struct ShaderMacro
     StringView value = {};
 };
 
-struct ShaderCompileDesc
+struct ShaderCompileConfig
 {
     eShader                     type       = eShader::Vertex;
     StringView                  entryPoint = {};
     Span<const ShaderMacro>     macros     = {};
-    Flags<eShaderCompileOption> flags      = {};
+    Flags<eShaderCompileOption> flags      = eShaderCompileOption::None;
 };
 
-class Shader
+struct BlobDelete
 {
-    JUG_CLASS(Shader, NO_COPY)
-
-public:
-    ~Shader();
-
-    Shader(Shader&& _other) noexcept;
-    Shader& operator=(Shader&& _other) noexcept;
-
-    // ===========================================
-    //  Compile
-    // ===========================================
-
-    [[nodiscard]] static Result<Shader> Compile(StringView _source, const ShaderCompileDesc& _desc);
-    [[nodiscard]] static Result<Shader> CompileFromFile(const FilePath& _filePath, const ShaderCompileDesc& _desc);
-
-    // ===========================================
-    //  Save
-    // ===========================================
-
-    [[nodiscard]] Error SaveToFile(const FilePath& _filePath) const;
-
-    // ===========================================
-    //  Access
-    // ===========================================
-
-    [[nodiscard]] MemoryView GetByteCode() const;
-
-private:
-    Shader() = default;
-    Error CompileFromSource_(StringView _source, const ShaderCompileDesc& _desc);
-    Error CompileFromFile_(const FilePath& _filePath, const ShaderCompileDesc& _desc) const;
-
-    ID3DBlob* m_pBlob = nullptr;
+    void operator()(void* _p) const
+    {
+        if (_p)
+        {
+            static_cast<ID3DBlob*>(_p)->Release();
+        }
+    }
 };
+
+struct ShaderBytecode
+{
+    [[nodiscard]] MemoryView GetBytecode() const
+    {
+        JUG_ASSERT(pBlob, "Shader pBlob is null.\n");
+        return { pBlob->GetBufferPointer(), pBlob->GetBufferSize() };
+    }
+
+    Scoped<ID3DBlob, BlobDelete> pBlob = nullptr;
+};
+
+[[nodiscard]] Result<ShaderBytecode> CompileShader(StringView _source, const ShaderCompileConfig& _config);
+[[nodiscard]] Result<ShaderBytecode> CompileShaderFromFile(const FilePath& _path, const ShaderCompileConfig& _config);
 
 }   // namespace jug

@@ -39,7 +39,7 @@ enum class eTextureOption : uint32_t
     ShaderReadWrite = 1 << 4,   // can be read and written by shader.
 
     // misc
-    HasMips = 1 << 5,   // alloc mips storage. (w render_graph_detail h render_graph_detail d) ~ (1 render_graph_detail 1 render_graph_detail 1)
+    HasMips = 1 << 5,   // alloc mips storage. (w x h x d) ~ (1 x 1 x 1)
 };
 
 enum class eMSAA
@@ -237,11 +237,11 @@ enum class eBlend : uint32_t
     OpAlpha_Max         = 4 << 20,
 
     // write
-    Write_R   = 1 << 23,
-    Write_G   = 1 << 24,
-    Write_B   = 1 << 25,
-    Write_A   = 1 << 26,
-    Write_All = Write_R | Write_G | Write_B | Write_A,
+    Write_R    = 1 << 23,
+    Write_G    = 1 << 24,
+    Write_B    = 1 << 25,
+    Write_A    = 1 << 26,
+    Write_RGBA = Write_R | Write_G | Write_B | Write_A,
 };
 
 [[nodiscard]] Flags<eBlend> FilterSrc(Flags<eBlend> _flags);
@@ -255,7 +255,7 @@ enum class eStencil : uint32_t
 {
     None = 0,
 
-    // stencil (render_graph_detail) depth (o)
+    // stencil (x) depth (o)
     StencilFail_DepthPass_Keep    = 0 << 0,   // default
     StencilFail_DepthPass_Zero    = 1 << 0,
     StencilFail_DepthPass_Replace = 2 << 0,
@@ -265,7 +265,7 @@ enum class eStencil : uint32_t
     StencilFail_DepthPass_Incr    = 6 << 0,
     StencilFail_DepthPass_Decr    = 7 << 0,
 
-    // stencil (o) depth (render_graph_detail)
+    // stencil (o) depth (x)
     StencilPass_DepthFail_Keep    = 0 << 3,   // default
     StencilPass_DepthFail_Zero    = 1 << 3,
     StencilPass_DepthFail_Replace = 2 << 3,
@@ -307,49 +307,53 @@ enum class eSampler : uint32_t
     None = 0,
 
     // filter
-    Filter_MinPoint_MagPoint_MipPoint    = 0 << 0,   // default
-    Filter_MinPoint_MagPoint_MipLinear   = 1 << 0,
-    Filter_MinPoint_MagLinear_MipPoint   = 2 << 0,
-    Filter_MinPoint_MagLinear_MipLinear  = 3 << 0,
-    Filter_MinLinear_MagPoint_MipPoint   = 4 << 0,
-    Filter_MinLinear_MagPoint_MipLinear  = 5 << 0,
-    Filter_MinLinear_MagLinear_MipPoint  = 6 << 0,
-    Filter_MinLinear_MagLinear_MipLinear = 7 << 0,
-    Filter_Anisotropic4                  = 8 << 0,
-    Filter_Anisotropic8                  = 9 << 0,
-    Filter_Anisotropic16                 = 10 << 0,
+    Filter_MinPoint  = 0 << 0,   // default
+    Filter_MinLinear = 1 << 0,
+    Filter_MagPoint  = 0 << 1,   // default
+    Filter_MagLinear = 1 << 1,
+    Filter_MipPoint  = 0 << 2,   // default
+    Filter_MipLinear = 1 << 2,
+
+    // filter shortcut
+    Filter_MinMagMipPoint  = 0,
+    Filter_MinMagMipLinear = Filter_MinLinear | Filter_MagLinear | Filter_MipLinear,
+
+    // anisotropic
+    Filter_Anisotropic4  = 1 << 3,
+    Filter_Anisotropic8  = 2 << 3,
+    Filter_Anisotropic16 = 3 << 3,
 
     // u
-    U_Wrap       = 0 << 4,   // default
-    U_Mirror     = 1 << 4,
-    U_Clamp      = 2 << 4,
-    U_Border     = 3 << 4,
-    U_MirrorOnce = 4 << 4,
+    U_Wrap       = 0 << 5,   // default
+    U_Mirror     = 1 << 5,
+    U_Clamp      = 2 << 5,
+    U_Border     = 3 << 5,
+    U_MirrorOnce = 4 << 5,
 
     // v
-    V_Wrap       = 0 << 7,   // default
-    V_Mirror     = 1 << 7,
-    V_Clamp      = 2 << 7,
-    V_Border     = 3 << 7,
-    V_MirrorOnce = 4 << 7,
+    V_Wrap       = 0 << 8,   // default
+    V_Mirror     = 1 << 8,
+    V_Clamp      = 2 << 8,
+    V_Border     = 3 << 8,
+    V_MirrorOnce = 4 << 8,
 
     // w
-    W_Wrap       = 0 << 10,   // default
-    W_Mirror     = 1 << 10,
-    W_Clamp      = 2 << 10,
-    W_Border     = 3 << 10,
-    W_MirrorOnce = 4 << 10,
+    W_Wrap       = 0 << 11,   // default
+    W_Mirror     = 1 << 11,
+    W_Clamp      = 2 << 11,
+    W_Border     = 3 << 11,
+    W_MirrorOnce = 4 << 11,
 
     // compare
-    Compare_None         = 0 << 13,   // default
-    Compare_Less         = 1 << 13,
-    Compare_LessEqual    = 2 << 13,
-    Compare_Greater      = 3 << 13,
-    Compare_GreaterEqual = 4 << 13,
-    Compare_Equal        = 5 << 13,
-    Compare_NotEqual     = 6 << 13,
-    Compare_Always       = 7 << 13,
-    Compare_Never        = 8 << 13,
+    Compare_None         = 0 << 14,   // default
+    Compare_Less         = 1 << 14,
+    Compare_LessEqual    = 2 << 14,
+    Compare_Greater      = 3 << 14,
+    Compare_GreaterEqual = 4 << 14,
+    Compare_Equal        = 5 << 14,
+    Compare_NotEqual     = 6 << 14,
+    Compare_Always       = 7 << 14,
+    Compare_Never        = 8 << 14,
 };
 
 [[nodiscard]] Flags<eSampler> FilterFilter(Flags<eSampler> _flags);
@@ -398,7 +402,7 @@ struct VertexBufferDesc
     uint32_t           byteWidth   = 0;
     uint32_t           stride      = 0;
     uint32_t           numVertices = 0;
-    VertexLayoutHandle vlh         = kNullHandle;
+    VertexLayoutHandle vlh         = kInvalidHandle;
     bool               bDynamic    = false;
 };
 
@@ -436,7 +440,7 @@ struct TextureDesc
     uint32_t              height     = 0;
     uint32_t              depth      = 0;
     eTexture              type       = eTexture::Texture2D;
-    eTextureFormat        format     = eTextureFormat::Unknown;
+    eTextureFormat        format     = {};
     uint32_t              numLayers  = 1;
     uint32_t              numMips    = 1;
     eMSAA                 msaa       = eMSAA::None;
@@ -447,7 +451,7 @@ struct TextureDesc
 
 struct Attachment
 {
-    TextureHandle texh      = kNullHandle;
+    TextureHandle texh      = kInvalidHandle;
     uint32_t      mip       = 0;
     uint32_t      offset    = 0;
     uint32_t      numLayers = 1;   // [offset, offset + numLayers)
@@ -485,9 +489,9 @@ struct ShaderDesc
 
 struct ProgramDesc
 {
-    ShaderHandle vsh = kNullHandle;
-    ShaderHandle psh = kNullHandle;
-    ShaderHandle csh = kNullHandle;
+    ShaderHandle vshOrInvalid = kInvalidHandle;   // 컴퓨트 프로그램은 없음
+    ShaderHandle pshOrInvalid = kInvalidHandle;   // 컴퓨트 프로그램은 없음
+    ShaderHandle cshOrInvalid = kInvalidHandle;   // 그래픽스 프로그램은 없음
 };
 
 // ===========================================
@@ -502,7 +506,7 @@ public:
     /* implicit */ ResourceRef(StorageBufferHandle _sbh);
 
     [[nodiscard]] eResource GetType() const;
-    [[nodiscard]] bool      IsNull() const;
+    [[nodiscard]] bool      IsInvalid() const;
 
     [[nodiscard]] bool operator==(ResourceRef _other) const;
     explicit           operator bool() const;
@@ -513,7 +517,7 @@ public:
 private:
     union
     {
-        TextureHandle       m_texh = kNullHandle;
+        TextureHandle       m_texh = kInvalidHandle;
         StorageBufferHandle m_sbh;
     };
     eResource m_type = eResource::Texture;
@@ -530,7 +534,7 @@ public:
     /* implicit */ BufferRef(StorageBufferHandle _sbh);
 
     [[nodiscard]] eBuffer GetType() const;
-    [[nodiscard]] bool    IsNull() const;
+    [[nodiscard]] bool    IsInvalid() const;
 
     [[nodiscard]] bool operator==(BufferRef _other) const;
     explicit           operator bool() const;
@@ -545,7 +549,7 @@ private:
     JUG_DISABLE_ANON_WARNING_BEGIN
     union
     {
-        VertexBufferHandle   m_vbh;
+        VertexBufferHandle   m_vbh = kInvalidHandle;
         InstanceBufferHandle m_instbh;
         IndexBufferHandle    m_ibh;
         ConstantBufferHandle m_cbh;
@@ -558,8 +562,17 @@ private:
 
 struct VertexStream
 {
-    VertexBufferHandle vbh    = kNullHandle;
-    uint32_t           offset = 0;   // 버텍스 단위 오프셋
+    VertexBufferHandle vbhOrInvalid = kInvalidHandle;   // 없으면 빈 스트림
+    uint32_t           offset       = 0;                // 버텍스 단위 오프셋
+};
+
+enum class eGraphicsOption : uint32_t
+{
+    None = 0,
+
+    Debug            = 1 << 0,   // debug layer 를 활성화함. 런타임 성능이 떨어질 수 있음.
+    ProfileFrameTime = 1 << 1,   // 프레임 당 GPU 시간을 측정함. 런타임 성능이 떨어질 수 있음.
+    ProfileGpuMemory = 1 << 2,   // GPU 메모리 사용량을 측정함. 런타임 성능이 떨어질 수 있음.
 };
 
 struct GraphicsCaps
@@ -577,8 +590,7 @@ struct GraphicsCaps
     bool bAllowTearing       = false;
     bool bSoftwareRasterizer = false;
 
-    // runtime option
-    bool bDebugLayerEnabled = false;
+    Flags<eGraphicsOption> flags = kNoneFlags;
 };
 
 struct GraphicsStats

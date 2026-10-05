@@ -22,11 +22,11 @@ namespace
 
     template<EnumT E>
     [[nodiscard]] constexpr uint32_t ExtractField_(
-        const Flags<E> _state,
-        const Flags<E> _mask,
+        const Flags<E> _flags,
+        const Flags<E> _maskFlags,
         const uint32_t _shift)
     {
-        return static_cast<uint32_t>((_state & _mask).GetFlags()) >> _shift;
+        return static_cast<uint32_t>((_flags & _maskFlags).GetFlags()) >> _shift;
     }
 
     constexpr Flags<eRenderState> kTopologyMask { MakeFieldMask_(eRenderState::Topology_TriangleStrip, eRenderState::Topology_PointList) };
@@ -45,7 +45,7 @@ namespace
     constexpr Flags<eStencil> kStencilFailDepthFailMask { MakeFieldMask_(eStencil::StencilPass_DepthPass_Zero, eStencil::StencilPass_DepthPass_Decr) };
     constexpr Flags<eStencil> kStencilCompareMask { MakeFieldMask_(eStencil::Compare_Less, eStencil::Compare_Never) };
 
-    constexpr Flags<eSampler> kFilterMask { MakeFieldMask_(eSampler::Filter_MinPoint_MagPoint_MipLinear, eSampler::Filter_Anisotropic16) };
+    constexpr Flags<eSampler> kFilterMask { MakeFieldMask_(eSampler::Filter_MinLinear, eSampler::Filter_Anisotropic16) };
     constexpr Flags<eSampler> kUMask { MakeFieldMask_(eSampler::U_Mirror, eSampler::U_MirrorOnce) };
     constexpr Flags<eSampler> kVMask { MakeFieldMask_(eSampler::V_Mirror, eSampler::V_MirrorOnce) };
     constexpr Flags<eSampler> kWMask { MakeFieldMask_(eSampler::W_Mirror, eSampler::W_MirrorOnce) };
@@ -199,9 +199,9 @@ eResource ResourceRef::GetType() const
     return m_type;
 }
 
-bool ResourceRef::IsNull() const
+bool ResourceRef::IsInvalid() const
 {
-    return m_texh.IsNull();
+    return m_texh.IsInvalid();
 }
 
 bool ResourceRef::operator==(const ResourceRef _other) const
@@ -211,7 +211,7 @@ bool ResourceRef::operator==(const ResourceRef _other) const
 
 ResourceRef::operator bool() const
 {
-    return !IsNull();
+    return !IsInvalid();
 }
 
 TextureHandle ResourceRef::GetTextureHandle() const
@@ -225,7 +225,7 @@ StorageBufferHandle ResourceRef::GetStorageBufferHandle() const
 }
 
 BufferRef::BufferRef()
-    : m_vbh(kNullHandle)
+    : m_vbh(kInvalidHandle)
     , m_type(eBuffer::Vertex)
 {
 }
@@ -270,9 +270,9 @@ eBuffer BufferRef::GetType() const
     return m_type;
 }
 
-bool BufferRef::IsNull() const
+bool BufferRef::IsInvalid() const
 {
-    return m_vbh.IsNull();
+    return m_vbh.IsInvalid();
 }
 
 bool BufferRef::operator==(
@@ -283,7 +283,7 @@ bool BufferRef::operator==(
 
 BufferRef::operator bool() const
 {
-    return !IsNull();
+    return !IsInvalid();
 }
 
 VertexBufferHandle BufferRef::GetVertexBufferHandle() const

@@ -140,7 +140,7 @@ namespace
 
     struct CB_IMGUI
     {
-        MATRIX   proj;
+        MAT4     proj;
         uint32_t bLinearize;
         uint32_t padding[3];
     };
@@ -174,16 +174,16 @@ namespace
         const eShader    _type,
         const StringView _entryPoint)
     {
-        ShaderCompileDesc desc = {};
-        desc.type              = _type;
-        desc.entryPoint        = _entryPoint;
+        ShaderCompileConfig config = {};
+        config.type               = _type;
+        config.entryPoint         = _entryPoint;
 
-        const Result<Shader> shader = Shader::Compile(kShaderSource, desc);
+        const Result<ShaderBytecode> shader = CompileShader(kShaderSource, config);
         if (!shader)
         {
             JUG_FATAL("ImGuiRenderer: failed to compile {}.", _entryPoint);
         }
-        return Graphics::GetSingleton().CreateShader(shader->GetByteCode());
+        return Graphics::GetSingleton().CreateShader(shader->GetBytecode());
     }
 
     [[nodiscard]] SDL_Window* ToSdlWindow_(
@@ -224,8 +224,10 @@ ImGuiRenderer::ImGuiRenderer(
 
     // find framebuffer
     Graphics& gfx = Graphics::GetSingleton();
-    m_fbh         = gfx.FindFrameBufferOrNull(_wndID);
-    JUG_ASSERT(m_fbh, "ImGuiRenderer requires a framebuffer for the window.");
+
+    const FrameBufferHandle fbhOrInvalid = gfx.FindFrameBufferOrInvalid(_wndID);
+    JUG_ASSERT(fbhOrInvalid, "ImGuiRenderer requires a framebuffer for the window.");
+    m_fbh = fbhOrInvalid;
 
     // init backend
     if (!ImGui_ImplSDL3_InitForD3D(SDL_GetWindowFromID(_wndID)))
@@ -266,19 +268,11 @@ void ImGuiRenderer::End()
     }
 }
 
-void ImGuiRenderer::OnEvent(
-    Event& _event) const
+void ImGuiRenderer::OnSystemEvent_(
+    const SDL_Event& _event) const
 {
     ImGui::SetCurrentContext(m_pImguiCtx);
-
-    EventDispatcher dispatcher { _event };
-    dispatcher.Dispatch<SystemEvent>(this, &ImGuiRenderer::OnSystemEvent_);
-}
-
-void ImGuiRenderer::OnSystemEvent_(
-    const SystemEvent& _event) const
-{
-    ImGui_ImplSDL3_ProcessEvent(&_event.GetEvent());
+    ImGui_ImplSDL3_ProcessEvent(&_event);
 }
 
 void ImGuiRenderer::InitRenderer_()
@@ -349,12 +343,8 @@ void ImGuiRenderer::CreateFontTexture_()
     const uint32_t w = static_cast<uint32_t>(width);
     const uint32_t h = static_cast<uint32_t>(height);
 
-    // init data
-    ARRAY<MemoryView, 1> data;
-    data[0] = { pPixels, w * h * 4 };
-
     // create
-    m_fontTexh = gfx.CreateTexture2D(w, h, eTextureFormat::RGBA8_UNorm, 1, eMSAA::None, eTextureOption::None, data);
+    m_fontTexh = gfx.CreateTexture2D(w, h, eTextureFormat::RGBA8_UNorm, 1, eMSAA::None, eTextureOption::None, { pPixels, w * h * 4 });
     gfx.SetName(m_fontTexh, "ImGui.FontAtlas");
 
     // set id
@@ -399,10 +389,10 @@ void ImGuiRenderer::SetupRenderState_(
     gfx.SetConstantBuffer(m_frameCbh, eShader::Vertex, 0);
     gfx.SetConstantBuffer(m_frameCbh, eShader::Pixel, 0);
     gfx.SetConstantBuffer(m_textureCbh, eShader::Pixel, 1);
-    gfx.SetSampler({ eSampler::Filter_MinLinear_MagLinear_MipLinear, eSampler::U_Clamp, eSampler::V_Clamp, eSampler::W_Clamp }, eShader::Pixel, 0);
+    gfx.SetSampler({ eSampler::Filter_MinLinear, eSampler::Filter_MagLinear, eSampler::Filter_MipLinear, eSampler::U_Clamp, eSampler::V_Clamp, eSampler::W_Clamp }, eShader::Pixel, 0);
 
     gfx.SetRenderState({ eRenderState::Topology_TriangleList, eRenderState::Cull_None, eRenderState::Scissor });
-    gfx.SetBlend({ eBlend::Enable, eBlend::Src_SrcAlpha, eBlend::Dst_InvSrcAlpha, eBlend::Op_Add, eBlend::SrcAlpha_One, eBlend::DstAlpha_InvSrcAlpha, eBlend::OpAlpha_Add, eBlend::Write_All });
+    gfx.SetBlend({ eBlend::Enable, eBlend::Src_SrcAlpha, eBlend::Dst_InvSrcAlpha, eBlend::Op_Add, eBlend::SrcAlpha_One, eBlend::DstAlpha_InvSrcAlpha, eBlend::OpAlpha_Add, eBlend::Write_RGBA });
     gfx.SetStencil(eStencil::None, eStencil::None);
 
     gfx.SetSubmitParam(eSubmitParam::StartIndexLocation, 0);
@@ -414,42 +404,42 @@ void ImGuiRenderer::BindTexture_(
 {
     Graphics&             gfx     = Graphics::GetSingleton();
     const ImGuiTextureRef texture = _id;
-    const TextureDesc&    desc    = gfx.GetDesc(texture.texh);
+    const TextureDesc&    desc    = gfx.GetDesc(texture.GetTextureHandle());
 
-    JUG_ASSERT(texture.mip < desc.numMips, "ImGuiTextureRef::mip is out of range.");
+    JUG_ASSERT(texture.GetMip() < desc.numMips, "ImGuiTextureRef::mip is out of range.");
     JUG_ASSERT(!desc.flags.Has(eTextureOption::Readback), "A readback texture cannot be drawn by ImGui.");
 
     CB_IMGUI_TEXTURE constants;
-    constants.mip          = static_cast<float>(texture.mip);
-    constants.face         = static_cast<uint32_t>(texture.face);
-    constants.bTextureSRGB = IsSRGB(desc.format) ? 1u : 0u;
+    constants.mip          = static_cast<float>(texture.GetMip());
+    constants.face         = static_cast<uint32_t>(texture.GetFace());
+    constants.bTextureSRGB = IsSrgbFormat(desc.format) ? 1u : 0u;
 
     eImGuiTexture type = eImGuiTexture::Texture2D;
     switch (desc.type)
     {
         case eTexture::Texture2D:
         {
-            JUG_ASSERT(texture.layer < desc.numLayers, "ImGuiTextureRef::layer is out of range.");
+            JUG_ASSERT(texture.GetLayer() < desc.numLayers, "ImGuiTextureRef::layer is out of range.");
             type            = desc.numLayers > 1 ? eImGuiTexture::Texture2DArray : eImGuiTexture::Texture2D;
-            constants.layer = static_cast<float>(texture.layer);
+            constants.layer = static_cast<float>(texture.GetLayer());
         }
         break;
 
         case eTexture::TextureCube:
         {
             const uint32_t numCubes = desc.numLayers / 6;
-            JUG_ASSERT(texture.layer < numCubes, "ImGuiTextureRef::layer (cube index) is out of range.");
+            JUG_ASSERT(texture.GetLayer() < numCubes, "ImGuiTextureRef::layer (cube index) is out of range.");
             type            = numCubes > 1 ? eImGuiTexture::TextureCubeArray : eImGuiTexture::TextureCube;
-            constants.layer = static_cast<float>(texture.layer);
+            constants.layer = static_cast<float>(texture.GetLayer());
         }
         break;
 
         case eTexture::Texture3D:
         {
-            const uint32_t depth = CalcTextureSize(desc.width, desc.height, desc.depth, texture.mip).depth;
-            JUG_ASSERT(texture.layer < depth, "ImGuiTextureRef::layer (depth slice) is out of range.");
+            const uint32_t depth = CalcTextureSize(desc.width, desc.height, desc.depth, texture.GetMip()).depth;
+            JUG_ASSERT(texture.GetLayer() < depth, "ImGuiTextureRef::layer (depth slice) is out of range.");
             type            = eImGuiTexture::Texture3D;
-            constants.layer = (static_cast<float>(texture.layer) + 0.5f) / static_cast<float>(depth);
+            constants.layer = (static_cast<float>(texture.GetLayer()) + 0.5f) / static_cast<float>(depth);
         }
         break;
     }
@@ -461,7 +451,7 @@ void ImGuiRenderer::BindTexture_(
     // bind
     for (size_t slot = 0; slot < CountOf<eImGuiTexture>(); ++slot)
     {
-        const TextureHandle texh = (slot == static_cast<size_t>(type)) ? texture.texh : kNullHandle;
+        const TextureHandle texh = (slot == static_cast<size_t>(type)) ? texture.GetTextureHandle() : kInvalidHandle;
         gfx.SetTexture(texh, eShader::Pixel, static_cast<uint32_t>(slot));
     }
 }
@@ -522,7 +512,7 @@ void ImGuiRenderer::RenderDrawData_(
 
         // linearize
         const TextureHandle texh = gfx.GetDesc(_fbh).atts[0].texh;
-        constants.bLinearize     = IsSRGB(gfx.GetDesc(texh).format) ? 1u : 0u;
+        constants.bLinearize     = IsSrgbFormat(gfx.GetDesc(texh).format) ? 1u : 0u;
 
         // update
         gfx.UpdateBuffer(m_frameCbh, constants);

@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "GeometryFactory.h"
+#include "Geometry.h"
 
 #include <fmt/base.h>
 
@@ -11,24 +11,24 @@ namespace
 
     struct Vertex
     {
-        VECTOR3 position = Zero<VECTOR3>();
-        VECTOR3 normal   = Up<VECTOR3>();
-        VECTOR3 tangent  = Right<VECTOR3>();
-        VECTOR2 texCoord = Zero<VECTOR2>();
+        VEC3 position = Zero<VEC3>();
+        VEC3 normal   = Up<VEC3>();
+        VEC3 tangent  = Right<VEC3>();
+        VEC2 texCoord = Zero<VEC2>();
     };
 
     QUAT MakeAxisRotation_(
-        const VECTOR3 _normal)
+        const VEC3 _normal)
     {
         JUG_ASSERT(!IsZeroApprox(_normal), "GeometryFactory - Axis normal must not be zero");
-        return QUAT::MakeFromTo(Up<VECTOR3>(), Normalize(_normal));
+        return QUAT::MakeFromTo(Up<VEC3>(), Normalize(_normal));
     }
 
-    GeometryFactoryResult Pack_(
+    Geometry Pack_(
         const Span<Vertex>&   _vertices,
         const Span<uint32_t>& _indices,
         const VertexLayout&   _vl,
-        const QUAT      _rotation)
+        const QUAT            _rotation)
     {
         JUG_ASSERT(_vl.Has(eVertexAttribute::Position), "GeometryFactory - VertexLayout must have a position attribute");
 
@@ -36,8 +36,8 @@ namespace
         const size_t   numVertices = _vertices.size();
         const size_t   numIndices  = _indices.size();
 
-        GeometryFactoryResult result = {};
-        result.bU32                  = numVertices > 0xFFFF;
+        Geometry result = {};
+        result.bU32     = numVertices > 0xFFFF;
         result.vertexData.ResizeUninitialized(numVertices * stride);
         result.indexData.ResizeUninitialized(numIndices * (result.bU32 ? sizeof(uint32_t) : sizeof(uint16_t)));
 
@@ -45,10 +45,10 @@ namespace
         {
             const Vertex& vertex = _vertices[i];
 
-            const VECTOR3 position  = Rotate(vertex.position, _rotation);
-            const VECTOR3 normal    = Rotate(vertex.normal, _rotation);
-            const VECTOR3 tangent   = Rotate(vertex.tangent, _rotation);
-            const VECTOR3 bitangent = Cross(normal, tangent);
+            const VEC3 position  = Rotate(vertex.position, _rotation);
+            const VEC3 normal    = Rotate(vertex.normal, _rotation);
+            const VEC3 tangent   = Rotate(vertex.tangent, _rotation);
+            const VEC3 bitangent = Cross(normal, tangent);
 
             std::byte* pDst = result.vertexData.data() + i * stride;
             for (const VertexAttribute& attrib: _vl.GetAttributes())
@@ -59,51 +59,51 @@ namespace
                     continue;
                 }
 
-                const float* pSrc   = nullptr;
-                uint32_t     numSrc = 0;
+                const float* pSrcOrNull = nullptr;
+                uint32_t     numSrc     = 0;
 
                 switch (attrib.attrib)   // NOLINT
                 {
                     case eVertexAttribute::Position:
-                        pSrc   = position.GetPtr();
-                        numSrc = 3;
+                        pSrcOrNull = position.GetPtr();
+                        numSrc     = 3;
                         break;
 
                     case eVertexAttribute::Normal:
-                        pSrc   = normal.GetPtr();
-                        numSrc = 3;
+                        pSrcOrNull = normal.GetPtr();
+                        numSrc     = 3;
                         break;
 
                     case eVertexAttribute::Tangent:
-                        pSrc   = tangent.GetPtr();
-                        numSrc = 3;
+                        pSrcOrNull = tangent.GetPtr();
+                        numSrc     = 3;
                         break;
 
                     case eVertexAttribute::Bitangent:
-                        pSrc   = bitangent.GetPtr();
-                        numSrc = 3;
+                        pSrcOrNull = bitangent.GetPtr();
+                        numSrc     = 3;
                         break;
 
                     case eVertexAttribute::TexCoord0:
                     case eVertexAttribute::TexCoord1:
                     case eVertexAttribute::TexCoord2:
                     case eVertexAttribute::TexCoord3:
-                        pSrc   = vertex.texCoord.GetPtr();
-                        numSrc = 2;
+                        pSrcOrNull = vertex.texCoord.GetPtr();
+                        numSrc     = 2;
                         break;
 
                     default:
                         break;   // Color0~3 은 지원하지 않는다.
                 }
 
-                if (pSrc == nullptr)
+                if (pSrcOrNull == nullptr)
                 {
                     std::memset(pDst + attrib.offset, 0, attrib.num * sizeof(float));   // 미지원 attrib 는 0으로 채운다.
                     continue;
                 }
 
                 const uint32_t numCopy = Min(attrib.num, numSrc);
-                std::memcpy(pDst + attrib.offset, pSrc, numCopy * sizeof(float));
+                std::memcpy(pDst + attrib.offset, pSrcOrNull, numCopy * sizeof(float));
                 if (numCopy < attrib.num)
                 {
                     std::memset(pDst + attrib.offset + numCopy * sizeof(float), 0, (attrib.num - numCopy) * sizeof(float));   // numSrc 가 모자란 나머지는 0으로 채운다.
@@ -129,53 +129,53 @@ namespace
 
 }   // namespace
 
-GeometryFactoryResult CreateBox(
-    const VECTOR3       _size,
-    const VECTOR3       _normal,
+Geometry CreateBox(
+    const VEC3          _size,
+    const VEC3          _normal,
     const VertexLayout& _vl)
 {
-    constexpr ARRAY<VECTOR3, 6> kFaceNormals = {
-        VECTOR3 {  1.f,  0.f,  0.f },
-        VECTOR3 { -1.f,  0.f,  0.f },
-        VECTOR3 {  0.f,  1.f,  0.f },
-        VECTOR3 {  0.f, -1.f,  0.f },
-        VECTOR3 {  0.f,  0.f,  1.f },
-        VECTOR3 {  0.f,  0.f, -1.f }
+    constexpr ARRAY<VEC3, 6> kFaceNormals = {
+        VEC3 {  1.f,  0.f,  0.f },
+        VEC3 { -1.f,  0.f,  0.f },
+        VEC3 {  0.f,  1.f,  0.f },
+        VEC3 {  0.f, -1.f,  0.f },
+        VEC3 {  0.f,  0.f,  1.f },
+        VEC3 {  0.f,  0.f, -1.f }
     };
 
-    constexpr ARRAY<VECTOR3, 6> kFaceTangents = {
-        VECTOR3 {  0.f, 0.f,  1.f },
-        VECTOR3 {  0.f, 0.f, -1.f },
-        VECTOR3 {  1.f, 0.f,  0.f },
-        VECTOR3 {  1.f, 0.f,  0.f },
-        VECTOR3 { -1.f, 0.f,  0.f },
-        VECTOR3 {  1.f, 0.f,  0.f }
+    constexpr ARRAY<VEC3, 6> kFaceTangents = {
+        VEC3 {  0.f, 0.f,  1.f },
+        VEC3 {  0.f, 0.f, -1.f },
+        VEC3 {  1.f, 0.f,  0.f },
+        VEC3 {  1.f, 0.f,  0.f },
+        VEC3 { -1.f, 0.f,  0.f },
+        VEC3 {  1.f, 0.f,  0.f }
     };
 
-    constexpr ARRAY<VECTOR2, 4> kCornerUVs = {
-        VECTOR2 { 0.f, 0.f },
-        VECTOR2 { 1.f, 0.f },
-        VECTOR2 { 1.f, 1.f },
-        VECTOR2 { 0.f, 1.f }
+    constexpr ARRAY<VEC2, 4> kCornerUVs = {
+        VEC2 { 0.f, 0.f },
+        VEC2 { 1.f, 0.f },
+        VEC2 { 1.f, 1.f },
+        VEC2 { 0.f, 1.f }
     };
-
-    Buffer<Vertex>   vertices { kNoInit, 24 };
-    Buffer<uint32_t> indices { kNoInit, 36 };
+    
+    Buffer<Vertex>   vertices = { kNoInit, 24 };
+    Buffer<uint32_t> indices  = { kNoInit, 36 };
 
     for (uint32_t face = 0; face < 6; ++face)
     {
-        const VECTOR3 n = kFaceNormals[face];
-        const VECTOR3 t = kFaceTangents[face];
-        const VECTOR3 b = Cross(n, t);
+        const VEC3 n = kFaceNormals[face];
+        const VEC3 t = kFaceTangents[face];
+        const VEC3 b = Cross(n, t);
 
-        const VECTOR3 center = n * (_size * 0.5f);
-        const float   sizeT  = Abs(Dot(t, _size));
-        const float   sizeB  = Abs(Dot(b, _size));
+        const VEC3  center = n * (_size * 0.5f);
+        const float sizeT  = Abs(Dot(t, _size));
+        const float sizeB  = Abs(Dot(b, _size));
 
         const uint32_t base = static_cast<uint32_t>(vertices.GetSize());
         for (uint32_t corner = 0; corner < 4; ++corner)
         {
-            const VECTOR2 uv = kCornerUVs[corner];
+            const VEC2 uv = kCornerUVs[corner];
 
             Vertex vertex           = {};
             vertex.position         = center + t * (sizeT * (uv.x - 0.5f)) + b * (sizeB * (uv.y - 0.5f));
@@ -184,7 +184,7 @@ GeometryFactoryResult CreateBox(
             vertex.texCoord         = uv;
             vertices[base + corner] = vertex;
         }
-
+        
         indices[face * 6 + 0] = base + 0;
         indices[face * 6 + 1] = base + 1;
         indices[face * 6 + 2] = base + 2;
@@ -196,7 +196,7 @@ GeometryFactoryResult CreateBox(
     return Pack_(vertices, indices, _vl, MakeAxisRotation_(_normal));
 }
 
-GeometryFactoryResult CreateSphere(
+Geometry CreateSphere(
     const float         _radius,
     const uint32_t      _numSubdivision,
     const VertexLayout& _vl)
@@ -206,8 +206,8 @@ GeometryFactoryResult CreateSphere(
     const uint32_t numStacks = _numSubdivision;
     const uint32_t numSlices = _numSubdivision * 2;
 
-    Buffer<Vertex>   vertices { kNoInit, static_cast<size_t>(numStacks + 1) * (numSlices + 1) };
-    Buffer<uint32_t> indices { kNoInit, static_cast<size_t>(numStacks) * numSlices * 6 };
+    Buffer<Vertex>   vertices = { kNoInit, static_cast<size_t>(numStacks + 1) * (numSlices + 1) };
+    Buffer<uint32_t> indices  = { kNoInit, static_cast<size_t>(numStacks) * numSlices * 6 };
 
     size_t vIndex = 0;
     for (uint32_t stack = 0; stack <= numStacks; ++stack)
@@ -260,22 +260,22 @@ GeometryFactoryResult CreateSphere(
     }
     indices.ResizeUninitialized(iIndex);
 
-    return Pack_(vertices, indices, _vl, QUAT::kIdentity);
+    return Pack_(vertices, indices, _vl, QUAT::Identity());
 }
 
-GeometryFactoryResult CreateCylinder(
+Geometry CreateCylinder(
     const float         _radius,
     const float         _height,
     const uint32_t      _numTri,
-    const VECTOR3       _normal,
+    const VEC3          _normal,
     const VertexLayout& _vl)
 {
     JUG_ASSERT(_numTri >= 3, "GeometryFactory::CreateCylinder() - Too few segments");
 
     const float half = _height * 0.5f;
 
-    Buffer<Vertex>   vertices { kNoInit, static_cast<size_t>(_numTri + 1) * 2 + static_cast<size_t>(_numTri + 1) * 2 };
-    Buffer<uint32_t> indices { kNoInit, static_cast<size_t>(_numTri) * 12 };
+    Buffer<Vertex>   vertices = { kNoInit, static_cast<size_t>(_numTri + 1) * 2 + static_cast<size_t>(_numTri + 1) * 2 };
+    Buffer<uint32_t> indices  = { kNoInit, static_cast<size_t>(_numTri) * 12 };
 
     size_t vIndex = 0;
     size_t iIndex = 0;
@@ -316,7 +316,7 @@ GeometryFactoryResult CreateCylinder(
     for (uint32_t cap = 0; cap < 2; ++cap)
     {
         const bool     bTop  = cap == 0;
-        const VECTOR3  n     = bTop ? VECTOR3 { 0.f, 1.f, 0.f } : VECTOR3 { 0.f, -1.f, 0.f };
+        const VEC3     n     = bTop ? VEC3 { 0.f, 1.f, 0.f } : VEC3 { 0.f, -1.f, 0.f };
         const float    y     = bTop ? half : -half;
         const float    vSign = bTop ? -0.5f : 0.5f;
         const uint32_t base  = static_cast<uint32_t>(vIndex);
@@ -365,11 +365,11 @@ GeometryFactoryResult CreateCylinder(
     return Pack_(vertices, indices, _vl, MakeAxisRotation_(_normal));
 }
 
-GeometryFactoryResult CreateCone(
+Geometry CreateCone(
     const float         _radius,
     const float         _height,
     const uint32_t      _numTri,
-    const VECTOR3       _normal,
+    const VEC3          _normal,
     const VertexLayout& _vl)
 {
     JUG_ASSERT(_numTri >= 3, "GeometryFactory::CreateCone() - Too few segments");
@@ -377,8 +377,8 @@ GeometryFactoryResult CreateCone(
     const float half     = _height * 0.5f;
     const float invSlant = RSqrt(_radius * _radius + _height * _height);
 
-    Buffer<Vertex>   vertices { kNoInit, static_cast<size_t>(_numTri + 1) * 2 + _numTri + 1 };
-    Buffer<uint32_t> indices { kNoInit, static_cast<size_t>(_numTri) * 6 };
+    Buffer<Vertex>   vertices = { kNoInit, static_cast<size_t>(_numTri + 1) * 2 + _numTri + 1 };
+    Buffer<uint32_t> indices  = { kNoInit, static_cast<size_t>(_numTri) * 6 };
 
     size_t vIndex = 0;
     size_t iIndex = 0;
@@ -393,8 +393,8 @@ GeometryFactoryResult CreateCone(
             const float cosP = Cos(phi);
 
             Vertex vertex      = {};
-            vertex.position    = row == 0 ? VECTOR3 { 0.f, half, 0.f } : VECTOR3 { _radius * cosP, -half, _radius * sinP };
-            vertex.normal      = VECTOR3 { _height * cosP, _radius, _height * sinP } * invSlant;
+            vertex.position    = row == 0 ? VEC3 { 0.f, half, 0.f } : VEC3 { _radius * cosP, -half, _radius * sinP };
+            vertex.normal      = VEC3 { _height * cosP, _radius, _height * sinP } * invSlant;
             vertex.tangent     = { -sinP, 0.f, cosP };
             vertex.texCoord    = { u, static_cast<float>(row) };
             vertices[vIndex++] = vertex;
@@ -447,22 +447,22 @@ GeometryFactoryResult CreateCone(
     return Pack_(vertices, indices, _vl, MakeAxisRotation_(_normal));
 }
 
-GeometryFactoryResult CreatePlane(
+Geometry CreatePlane(
     const float         _width,
     const float         _height,
     const uint32_t      _numSegX,
     const uint32_t      _numSegY,
-    const VECTOR3       _normal,
+    const VEC3          _normal,
     const VertexLayout& _vl)
 {
     JUG_ASSERT(_numSegX >= 1 && _numSegY >= 1, "GeometryFactory::CreatePlane() - Too few segments");
 
-    constexpr VECTOR3 kNormal    = { 0.f, 1.f, 0.f };
-    constexpr VECTOR3 kTangent   = { 1.f, 0.f, 0.f };
-    constexpr VECTOR3 kBitangent = { 0.f, 0.f, -1.f };
+    constexpr VEC3 kNormal    = { 0.f, 1.f, 0.f };
+    constexpr VEC3 kTangent   = { 1.f, 0.f, 0.f };
+    constexpr VEC3 kBitangent = { 0.f, 0.f, -1.f };
 
-    Buffer<Vertex>   vertices { kNoInit, static_cast<size_t>(_numSegX + 1) * (_numSegY + 1) };
-    Buffer<uint32_t> indices { kNoInit, static_cast<size_t>(_numSegX) * _numSegY * 6 };
+    Buffer<Vertex>   vertices = { kNoInit, static_cast<size_t>(_numSegX + 1) * (_numSegY + 1) };
+    Buffer<uint32_t> indices  = { kNoInit, static_cast<size_t>(_numSegX) * _numSegY * 6 };
 
     size_t vIndex = 0;
     for (uint32_t y = 0; y <= _numSegY; ++y)
@@ -502,7 +502,7 @@ GeometryFactoryResult CreatePlane(
     return Pack_(vertices, indices, _vl, MakeAxisRotation_(_normal));
 }
 
-GeometryFactoryResult CreateCapsule(
+Geometry CreateCapsule(
     const float         _radius,
     const float         _height,
     const uint32_t      _numSegHeight,
@@ -527,7 +527,7 @@ GeometryFactoryResult CreateCapsule(
         float v        = 0.f;
     };
 
-    Vector<Ring> rings;
+    Vector<Ring> rings = {};
     rings.reserve(static_cast<size_t>(numCapRings) * 2 + _numSegHeight + 1);
 
     for (uint32_t i = 0; i <= numCapRings; ++i)   // 윗 반구
@@ -552,8 +552,8 @@ GeometryFactoryResult CreateCapsule(
 
     const uint32_t numRings = static_cast<uint32_t>(rings.size());
 
-    Buffer<Vertex>   vertices { kNoInit, static_cast<size_t>(numRings) * (_numSegCircle + 1) };
-    Buffer<uint32_t> indices { kNoInit, static_cast<size_t>(numRings - 1) * _numSegCircle * 6 };
+    Buffer<Vertex>   vertices = { kNoInit, static_cast<size_t>(numRings) * (_numSegCircle + 1) };
+    Buffer<uint32_t> indices  = { kNoInit, static_cast<size_t>(numRings - 1) * _numSegCircle * 6 };
 
     size_t vIndex = 0;
     for (const Ring& ring: rings)
@@ -601,7 +601,7 @@ GeometryFactoryResult CreateCapsule(
     }
     indices.ResizeUninitialized(iIndex);
 
-    return Pack_(vertices, indices, _vl, QUAT::kIdentity);
+    return Pack_(vertices, indices, _vl, QUAT::Identity());
 }
 
 }   // namespace jug

@@ -1,12 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="JugGfx\Shader.cpp">
-      <Filter>Resource</Filter>
-    </ClCompile>
-    <ClCompile Include="JugGfx\Image.cpp">
-      <Filter>Resource</Filter>
-    </ClCompile>
     <ClCompile Include="JugGfx\pch.cpp">
       <Filter>Base</Filter>
     </ClCompile>
@@ -16,10 +10,10 @@
     <ClCompile Include="JugGfx\GraphicsInclude.cpp">
       <Filter>Base</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\GeometryFactory.cpp">
+    <ClCompile Include="JugGfx\Geometry.cpp">
       <Filter>Geometry</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\TangentNormal.cpp">
+    <ClCompile Include="JugGfx\TangentFrame.cpp">
       <Filter>Geometry</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\DxMacro.cpp">
@@ -52,14 +46,38 @@
     <ClCompile Include="JugGfx\ImGuiImage.cpp">
       <Filter>ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="JugGfx\Image.cpp">
+      <Filter>Resource\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ImageImporter.cpp">
+      <Filter>Resource\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ImageExporter.cpp">
+      <Filter>Resource\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ImageDetail.cpp">
+      <Filter>Resource\Image</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Shader.cpp">
+      <Filter>Resource\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ResourceUtils.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ModelImporter.cpp">
+      <Filter>Resource\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ModelDetail.cpp">
+      <Filter>Resource\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ModelImporter_cgltf.cpp">
+      <Filter>Resource\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\ModelImporter_ufbx.cpp">
+      <Filter>Resource\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="JugGfx\Shader.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
-    <ClInclude Include="JugGfx\Image.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
     <ClInclude Include="JugGfx\pch.h">
       <Filter>Base</Filter>
     </ClInclude>
@@ -69,10 +87,10 @@
     <ClInclude Include="JugGfx\GraphicsInclude.h">
       <Filter>Base</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\GeometryFactory.h">
+    <ClInclude Include="JugGfx\Geometry.h">
       <Filter>Geometry</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\TangentNormal.h">
+    <ClInclude Include="JugGfx\TangentFrame.h">
       <Filter>Geometry</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\DxMacro.h">
@@ -105,6 +123,33 @@
     <ClInclude Include="JugGfx\ImGuiImage.h">
       <Filter>ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="JugGfx\Image.h">
+      <Filter>Resource\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ImageImporter.h">
+      <Filter>Resource\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ImageExporter.h">
+      <Filter>Resource\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ImageDetail.h">
+      <Filter>Resource\Image</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Shader.h">
+      <Filter>Resource\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ResourceUtils.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Model.h">
+      <Filter>Resource\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ModelImporter.h">
+      <Filter>Resource\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\ModelDetail.h">
+      <Filter>Resource\Model</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Resource">
@@ -130,6 +175,15 @@
     </Filter>
     <Filter Include="ImGui">
       <UniqueIdentifier>{48b64afd-cfd8-465c-96a0-ae51e3a59af1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource\Image">
+      <UniqueIdentifier>{e8ca42ba-91dc-4ba9-868f-a74bc7b0758a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource\Shader">
+      <UniqueIdentifier>{515f2e6b-6f85-4f93-bbd9-f96c642d0721}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource\Model">
+      <UniqueIdentifier>{1097a2d0-30df-460a-805c-6f8fba1812ad}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

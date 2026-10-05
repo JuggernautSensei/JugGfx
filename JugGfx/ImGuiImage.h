@@ -4,18 +4,25 @@
 namespace jug
 {
 
-struct ImGuiTextureRef
+class ImGuiTextureRef
 {
+public:
     ImGuiTextureRef() = default;
     /* implicit */ ImGuiTextureRef(TextureHandle _texh, uint32_t _mip = 0, uint32_t _layer = 0, eCubeFace _face = eCubeFace::PosX);
     /* implicit */ ImGuiTextureRef(ImTextureID _id);
 
     [[nodiscard]] ImTextureID ToImTextureID() const;
 
-    TextureHandle texh  = kNullHandle;
-    uint32_t      mip   = 0;
-    uint32_t      layer = 0;
-    eCubeFace     face  = eCubeFace::PosX;
+    [[nodiscard]] TextureHandle GetTextureHandle() const;
+    [[nodiscard]] uint32_t      GetMip() const;
+    [[nodiscard]] uint32_t      GetLayer() const;
+    [[nodiscard]] eCubeFace     GetFace() const;
+
+private:
+    TextureHandle m_texh  = kInvalidHandle;
+    uint32_t      m_mip   = 0;
+    uint32_t      m_layer = 0;
+    eCubeFace     m_face  = eCubeFace::PosX;
 };
 
 }   // namespace jug

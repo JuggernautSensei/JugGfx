@@ -20,44 +20,76 @@ bool IsDepthFormat(
     }
 }
 
-bool IsSRGB(
+bool IsCompressedFormat(
+    const eTextureFormat _format)
+{
+    switch (_format)   // NOLINT
+    {
+        case eTextureFormat::BC1_UNorm:
+        case eTextureFormat::BC1_UNorm_SRGB:
+        case eTextureFormat::BC2_UNorm:
+        case eTextureFormat::BC2_UNorm_SRGB:
+        case eTextureFormat::BC3_UNorm:
+        case eTextureFormat::BC3_UNorm_SRGB:
+        case eTextureFormat::BC4_UNorm:
+        case eTextureFormat::BC4_SNorm:
+        case eTextureFormat::BC5_UNorm:
+        case eTextureFormat::BC5_SNorm:
+        case eTextureFormat::BC6H_UFloat:
+        case eTextureFormat::BC6H_SFloat:
+        case eTextureFormat::BC7_UNorm:
+        case eTextureFormat::BC7_UNorm_SRGB:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool IsSrgbFormat(
     const eTextureFormat _format)
 {
     switch (_format)   // NOLINT
     {
         case eTextureFormat::RGBA8_UNorm_SRGB:
         case eTextureFormat::BGRA8_UNorm_SRGB:
+        case eTextureFormat::BC1_UNorm_SRGB:
+        case eTextureFormat::BC2_UNorm_SRGB:
+        case eTextureFormat::BC3_UNorm_SRGB:
+        case eTextureFormat::BC7_UNorm_SRGB:
             return true;
         default:
             return false;
     }
 }
 
-eTextureFormat ToNonSRGB(
+eTextureFormat ToLinearFormat(
     const eTextureFormat _format)
 {
     switch (_format)   // NOLINT
     {
-        case eTextureFormat::RGBA8_UNorm_SRGB:
-            return eTextureFormat::RGBA8_UNorm;
-        case eTextureFormat::BGRA8_UNorm_SRGB:
-            return eTextureFormat::BGRA8_UNorm;
-        default:
-            return _format;
+        case eTextureFormat::RGBA8_UNorm_SRGB: return eTextureFormat::RGBA8_UNorm;
+        case eTextureFormat::BGRA8_UNorm_SRGB: return eTextureFormat::BGRA8_UNorm;
+        case eTextureFormat::BC1_UNorm_SRGB: return eTextureFormat::BC1_UNorm;
+        case eTextureFormat::BC2_UNorm_SRGB: return eTextureFormat::BC2_UNorm;
+        case eTextureFormat::BC3_UNorm_SRGB: return eTextureFormat::BC3_UNorm;
+        case eTextureFormat::BC7_UNorm_SRGB: return eTextureFormat::BC7_UNorm;
+        default: return _format;
     }
 }
 
-eTextureFormat ToSrgbOrUnknown(
+Optional<eTextureFormat> ToSrgbFormat(
     const eTextureFormat _format)
 {
     switch (_format)   // NOLINT
     {
-        case eTextureFormat::RGBA8_UNorm:
-            return eTextureFormat::RGBA8_UNorm_SRGB;
-        case eTextureFormat::BGRA8_UNorm:
-            return eTextureFormat::BGRA8_UNorm_SRGB;
-        default:
-            return eTextureFormat::Unknown;
+        case eTextureFormat::RGBA8_UNorm: return eTextureFormat::RGBA8_UNorm_SRGB;
+        case eTextureFormat::BGRA8_UNorm: return eTextureFormat::BGRA8_UNorm_SRGB;
+        case eTextureFormat::BC1_UNorm: return eTextureFormat::BC1_UNorm_SRGB;
+        case eTextureFormat::BC2_UNorm: return eTextureFormat::BC2_UNorm_SRGB;
+        case eTextureFormat::BC3_UNorm: return eTextureFormat::BC3_UNorm_SRGB;
+        case eTextureFormat::BC7_UNorm: return eTextureFormat::BC7_UNorm_SRGB;
+        default: return kNullopt;
     }
 }
 
@@ -66,9 +98,6 @@ uint32_t GetBitPerPixel(
 {
     switch (_format)
     {
-        case eTextureFormat::Unknown:
-            return 0;
-
         case eTextureFormat::R8_UNorm:
         case eTextureFormat::R8_SNorm:
         case eTextureFormat::R8_UInt:
@@ -147,10 +176,136 @@ uint32_t GetBitPerPixel(
         case eTextureFormat::RG11B10_Float:
             return 32;
 
+        case eTextureFormat::BC1_UNorm:
+        case eTextureFormat::BC1_UNorm_SRGB:
+        case eTextureFormat::BC4_UNorm:
+        case eTextureFormat::BC4_SNorm:
+            return 4;   // 8 bytes per 4x4 block
+
+        case eTextureFormat::BC2_UNorm:
+        case eTextureFormat::BC2_UNorm_SRGB:
+        case eTextureFormat::BC3_UNorm:
+        case eTextureFormat::BC3_UNorm_SRGB:
+        case eTextureFormat::BC5_UNorm:
+        case eTextureFormat::BC5_SNorm:
+        case eTextureFormat::BC6H_UFloat:
+        case eTextureFormat::BC6H_SFloat:
+        case eTextureFormat::BC7_UNorm:
+        case eTextureFormat::BC7_UNorm_SRGB:
+            return 8;   // 16 bytes per 4x4 block
+
         default:
             JUG_ASSERT(false, "Unknown texture format");
             return 0;
     }
+}
+
+uint32_t GetNumChannels(
+    const eTextureFormat _format)
+{
+    switch (_format)
+    {
+        case eTextureFormat::R8_UNorm:
+        case eTextureFormat::R8_SNorm:
+        case eTextureFormat::R8_UInt:
+        case eTextureFormat::R8_Int:
+        case eTextureFormat::R16_UNorm:
+        case eTextureFormat::R16_SNorm:
+        case eTextureFormat::R16_UInt:
+        case eTextureFormat::R16_Int:
+        case eTextureFormat::R16_Float:
+        case eTextureFormat::R32_UInt:
+        case eTextureFormat::R32_Int:
+        case eTextureFormat::R32_Float:
+        case eTextureFormat::D16_UNorm:
+        case eTextureFormat::D32_Float:
+        case eTextureFormat::BC4_UNorm:
+        case eTextureFormat::BC4_SNorm:
+            return 1;
+
+        case eTextureFormat::RG8_UNorm:
+        case eTextureFormat::RG8_SNorm:
+        case eTextureFormat::RG8_UInt:
+        case eTextureFormat::RG8_Int:
+        case eTextureFormat::RG16_UNorm:
+        case eTextureFormat::RG16_SNorm:
+        case eTextureFormat::RG16_UInt:
+        case eTextureFormat::RG16_Int:
+        case eTextureFormat::RG16_Float:
+        case eTextureFormat::RG32_UInt:
+        case eTextureFormat::RG32_Int:
+        case eTextureFormat::RG32_Float:
+        case eTextureFormat::D24_UNorm_S8_UInt:
+        case eTextureFormat::D32_Float_S8_UInt:
+        case eTextureFormat::BC5_UNorm:
+        case eTextureFormat::BC5_SNorm:
+            return 2;
+
+        case eTextureFormat::B5G6R5_UNorm:
+        case eTextureFormat::RG11B10_Float:
+        case eTextureFormat::BC6H_UFloat:
+        case eTextureFormat::BC6H_SFloat:
+            return 3;
+
+        case eTextureFormat::RGBA8_UNorm:
+        case eTextureFormat::RGBA8_SNorm:
+        case eTextureFormat::RGBA8_UInt:
+        case eTextureFormat::RGBA8_Int:
+        case eTextureFormat::RGBA8_UNorm_SRGB:
+        case eTextureFormat::BGRA8_UNorm:
+        case eTextureFormat::BGRA8_UNorm_SRGB:
+        case eTextureFormat::RGBA16_UNorm:
+        case eTextureFormat::RGBA16_SNorm:
+        case eTextureFormat::RGBA16_UInt:
+        case eTextureFormat::RGBA16_Int:
+        case eTextureFormat::RGBA16_Float:
+        case eTextureFormat::RGBA32_UInt:
+        case eTextureFormat::RGBA32_Int:
+        case eTextureFormat::RGBA32_Float:
+        case eTextureFormat::BGRA4_UNorm:
+        case eTextureFormat::BGR5A1_UNorm:
+        case eTextureFormat::RGB10A2_UNorm:
+        case eTextureFormat::BC1_UNorm:
+        case eTextureFormat::BC1_UNorm_SRGB:
+        case eTextureFormat::BC2_UNorm:
+        case eTextureFormat::BC2_UNorm_SRGB:
+        case eTextureFormat::BC3_UNorm:
+        case eTextureFormat::BC3_UNorm_SRGB:
+        case eTextureFormat::BC7_UNorm:
+        case eTextureFormat::BC7_UNorm_SRGB:
+            return 4;
+
+        default:
+            JUG_ASSERT(false, "Unknown texture format");
+            return 0;
+    }
+}
+
+uint32_t CalcRowPitch(
+    const eTextureFormat _format,
+    const uint32_t       _width)
+{
+    if (IsCompressedFormat(_format))
+    {
+        const uint32_t blockSize = GetBitPerPixel(_format) * 16 / 8;
+        return Max(1u, (_width + 3) / 4) * blockSize;
+    }
+    return (_width * GetBitPerPixel(_format) + 7) / 8;
+}
+
+uint32_t CalcNumRows(
+    const eTextureFormat _format,
+    const uint32_t       _height)
+{
+    return IsCompressedFormat(_format) ? Max(1u, (_height + 3) / 4) : _height;
+}
+
+uint32_t CalcSlicePitch(
+    const eTextureFormat _format,
+    const uint32_t       _width,
+    const uint32_t       _height)
+{
+    return CalcRowPitch(_format, _width) * CalcNumRows(_format, _height);
 }
 
 uint32_t CalcNumMips(
@@ -162,7 +317,7 @@ uint32_t CalcNumMips(
     return std::bit_width(Max(_width, _height, _depth));
 }
 
-VECTOR3U CalcTextureSize(
+VEC3U CalcTextureSize(
     const uint32_t _width,
     const uint32_t _height,
     const uint32_t _depth,

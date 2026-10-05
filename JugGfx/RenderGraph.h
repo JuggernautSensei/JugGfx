@@ -20,7 +20,7 @@ class RenderGraph
     {
         using Type = H;
 
-        H    handle     = kNullHandle;
+        H    handle     = kInvalidHandle;
         bool bOwnership = false;
     };
 
@@ -28,7 +28,7 @@ class RenderGraph
     {
         [[nodiscard]] bool operator==(const Sampler& _other) const = default;
 
-        Flags<eSampler> flags  = {};
+        Flags<eSampler> flags  = eSampler::None;
         RGBA            border = {};
     };
 
@@ -52,7 +52,7 @@ class RenderGraph
 
     struct BlendDecl
     {
-        Flags<eBlend> flags = {};
+        Flags<eBlend> flags = eBlend::None;
         uint32_t      slot  = 0;
     };
 
@@ -78,12 +78,12 @@ class RenderGraph
         int scissorW = 0;
         int scissorH = 0;
 
-        Flags<eRenderState> renderState     = {};
-        Flags<eStencil>     frontStencil    = {};
-        Flags<eStencil>     backStencil     = {};
-        uint8_t             stencilRef      = 0;
-        RGBA                blendFactor     = {};
-        bool                bHasBlendFactor = false;
+        Flags<eRenderState> renderStateFlags  = eRenderState::None;
+        Flags<eStencil>     frontStencilFlags = eStencil::None;
+        Flags<eStencil>     backStencilFlags  = eStencil::None;
+        uint8_t             stencilRef        = 0;
+        RGBA                blendFactor       = {};
+        bool                bHasBlendFactor   = false;
 
         Vector<BlendDecl> blends = {};
 
@@ -98,13 +98,13 @@ class RenderGraph
         Vector<BindDecl>    cbuffers   = {};
         Vector<SamplerDecl> samplers   = {};
 
-        Callable<void()> executor = {};
+        Callable<void()> executorOrNull = nullptr;
     };
 
     struct ResolvedPass
     {
-        ProgramHandle     ph  = kNullHandle;
-        FrameBufferHandle fbh = kNullHandle;
+        ProgramHandle     ph        = kInvalidHandle;
+        FrameBufferHandle fbhOrInvalid = kInvalidHandle;
 
         Vector<ResourceRef> readResources  = {};
         Vector<ResourceRef> rwResources    = {};
@@ -115,8 +115,7 @@ class RenderGraph
 
     struct CompiledPass
     {
-        size_t descIndex = kInvalidIndex;
-
+        size_t   descIndex          = 0;
         uint64_t readUnbindMask     = 0;
         uint64_t rwUnbindMask       = 0;
         bool     bUnbindFrameBuffer = false;
@@ -133,11 +132,11 @@ public:
         UtilityPassBuilder(RenderGraph* _pGraph, size_t _index);
 
         UtilityPassBuilder& Enable(bool _bEnable = true);
-        UtilityPassBuilder& SetExecutor(const Callable<void()>& _executor);
+        UtilityPassBuilder& SetExecutor(const Callable<void()>& _executorOrNull);
 
     private:
         RenderGraph* m_pGraph = nullptr;
-        size_t       m_index  = kInvalidIndex;
+        size_t       m_index  = 0;
     };
 
     class RenderPassBuilder
@@ -156,7 +155,7 @@ public:
         RenderPassBuilder& SetScissor(int _x, int _y, int _width, int _height);
 
         RenderPassBuilder& SetRenderState(Flags<eRenderState> _flags);
-        RenderPassBuilder& SetStencil(Flags<eStencil> _front, Flags<eStencil> _back, uint8_t _ref = 0);
+        RenderPassBuilder& SetStencil(Flags<eStencil> _frontFlags, Flags<eStencil> _backFlags, uint8_t _ref = 0);
         RenderPassBuilder& SetBlend(Flags<eBlend> _flags, uint32_t _slot = 0);
         RenderPassBuilder& SetBlendFactor(RGBA _factor);
 
@@ -171,11 +170,11 @@ public:
         RenderPassBuilder& SetSampler(Flags<eSampler> _flags, eShader _shader, uint32_t _slot);
         RenderPassBuilder& SetSampler(Flags<eSampler> _flags, RGBA _border, eShader _shader, uint32_t _slot);
 
-        RenderPassBuilder& SetExecutor(const Callable<void()>& _executor);
+        RenderPassBuilder& SetExecutor(const Callable<void()>& _executorOrNull);
 
     private:
         RenderGraph* m_pGraph = nullptr;
-        size_t       m_index  = kInvalidIndex;
+        size_t       m_index  = 0;
     };
 
     class ComputePassBuilder
@@ -197,11 +196,11 @@ public:
         ComputePassBuilder& SetSampler(Flags<eSampler> _flags, uint32_t _slot);
         ComputePassBuilder& SetSampler(Flags<eSampler> _flags, RGBA _border, uint32_t _slot);
 
-        ComputePassBuilder& SetExecutor(const Callable<void()>& _executor);
+        ComputePassBuilder& SetExecutor(const Callable<void()>& _executorOrNull);
 
     private:
         RenderGraph* m_pGraph = nullptr;
-        size_t       m_index  = kInvalidIndex;
+        size_t       m_index  = 0;
     };
 
     RenderGraph() = default;
@@ -275,8 +274,6 @@ private:
     void Compile_();
 
     void DestroyOwned_();
-
-    constexpr static size_t kInvalidIndex = Max<size_t>();
 
     Vector<PassDesc>     m_descs          = {};
     Vector<ResolvedPass> m_resolved       = {};

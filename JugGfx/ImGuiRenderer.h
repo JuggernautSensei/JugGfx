@@ -19,15 +19,9 @@ public:
 
     void Begin() const;
     void End();
-    void OnEvent(Event& _event) const;
+    void OnSystemEvent_(const SDL_Event& _event) const;
 
 private:
-    // ===========================================
-    //  Event
-    // ===========================================
-
-    void OnSystemEvent_(const SystemEvent& _event) const;
-
     // ===========================================
     //  Renderer
     // ===========================================
@@ -47,15 +41,15 @@ private:
 
     ImGuiContext*     m_pImguiCtx = nullptr;
     String            m_iniPath   = {};
-    FrameBufferHandle m_fbh       = kNullHandle;
+    FrameBufferHandle m_fbh       = kInvalidHandle;
 
     VertexLayout         m_vl          = {};
-    ProgramHandle        m_ph          = kNullHandle;
-    ConstantBufferHandle m_frameCbh    = kNullHandle;
-    ConstantBufferHandle m_textureCbh  = kNullHandle;
-    TextureHandle        m_fontTexh    = kNullHandle;
-    VertexBufferHandle   m_vbh         = kNullHandle;
-    IndexBufferHandle    m_ibh         = kNullHandle;
+    ProgramHandle        m_ph          = kInvalidHandle;
+    ConstantBufferHandle m_frameCbh    = kInvalidHandle;
+    ConstantBufferHandle m_textureCbh  = kInvalidHandle;
+    TextureHandle        m_fontTexh    = kInvalidHandle;
+    VertexBufferHandle   m_vbh         = kInvalidHandle;
+    IndexBufferHandle    m_ibh         = kInvalidHandle;
     uint32_t             m_numVertices = 0;
     uint32_t             m_numIndices  = 0;
 };

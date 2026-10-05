@@ -25,7 +25,7 @@ public:
 
     [[nodiscard]] IAdapter* GetAdapterOrNull() const;
     [[nodiscard]] IFactory* GetFactory() const;
-    [[nodiscard]] IOutput*  GetOutput() const;
+    [[nodiscard]] IOutput*  GetOutputOrNull() const;
 
 private:
     void Reset_();
@@ -35,7 +35,7 @@ private:
 
     IAdapter* m_pAdapterOrNull = nullptr;
     IFactory* m_pFactory       = nullptr;
-    IOutput*  m_pOutput        = nullptr;
+    IOutput*  m_pOutputOrNull  = nullptr;
 };
 
 }   // namespace jug

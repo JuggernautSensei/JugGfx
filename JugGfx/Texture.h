@@ -5,8 +5,6 @@ namespace jug
 
 enum class eTextureFormat
 {
-    Unknown = 0,
-
     R8_UNorm,
     R8_SNorm,
     R8_UInt,
@@ -66,16 +64,37 @@ enum class eTextureFormat
     D24_UNorm_S8_UInt,
     D32_Float,
     D32_Float_S8_UInt,
+
+    BC1_UNorm,
+    BC1_UNorm_SRGB,
+    BC2_UNorm,
+    BC2_UNorm_SRGB,
+    BC3_UNorm,
+    BC3_UNorm_SRGB,
+    BC4_UNorm,
+    BC4_SNorm,
+    BC5_UNorm,
+    BC5_SNorm,
+    BC6H_UFloat,
+    BC6H_SFloat,
+    BC7_UNorm,
+    BC7_UNorm_SRGB,
 };
 
-[[nodiscard]] bool           IsDepthFormat(eTextureFormat _format);
-[[nodiscard]] bool           IsSRGB(eTextureFormat _format);
-[[nodiscard]] eTextureFormat ToNonSRGB(eTextureFormat _format);
-[[nodiscard]] eTextureFormat ToSrgbOrUnknown(eTextureFormat _format);
-[[nodiscard]] uint32_t       GetBitPerPixel(eTextureFormat _format);
+[[nodiscard]] bool                     IsDepthFormat(eTextureFormat _format);
+[[nodiscard]] bool                     IsCompressedFormat(eTextureFormat _format);
+[[nodiscard]] bool                     IsSrgbFormat(eTextureFormat _format);
+[[nodiscard]] eTextureFormat           ToLinearFormat(eTextureFormat _format);
+[[nodiscard]] Optional<eTextureFormat> ToSrgbFormat(eTextureFormat _format);
+[[nodiscard]] uint32_t                 GetBitPerPixel(eTextureFormat _format);
+[[nodiscard]] uint32_t                 GetNumChannels(eTextureFormat _format);   // 포맷이 표현하는 채널 수. depth/stencil 포함.
+
+[[nodiscard]] uint32_t CalcRowPitch(eTextureFormat _format, uint32_t _width);   // compressed textureFormat 이면, 블록 한 줄의 pitch
+[[nodiscard]] uint32_t CalcNumRows(eTextureFormat _format, uint32_t _height);   // compressed textureFormat 이면, 블록이 총 몇 줄있는지.
+[[nodiscard]] uint32_t CalcSlicePitch(eTextureFormat _format, uint32_t _width, uint32_t _height);
 
 [[nodiscard]] uint32_t CalcNumMips(uint32_t _width, uint32_t _height, uint32_t _depth);
-[[nodiscard]] VECTOR3U CalcTextureSize(uint32_t _width, uint32_t _height, uint32_t _depth, uint32_t _mip);
+[[nodiscard]] VEC3U    CalcTextureSize(uint32_t _width, uint32_t _height, uint32_t _depth, uint32_t _mip);
 [[nodiscard]] uint32_t CalcTextureIndex(uint32_t _mip, uint32_t _layer, uint32_t _numMips);
 
 }   // namespace jug

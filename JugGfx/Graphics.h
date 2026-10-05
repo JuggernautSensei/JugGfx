@@ -34,10 +34,10 @@ class Graphics
 
     struct StorageBufferD3D11 : public StorageBufferDesc
     {
-        ID3D11Buffer*              pBuffer = nullptr;
-        ID3D11ShaderResourceView*  pSRV    = nullptr;
-        ID3D11UnorderedAccessView* pUAV    = nullptr;
-        bool                       bMapped = false;
+        ID3D11Buffer*              pBuffer    = nullptr;
+        ID3D11ShaderResourceView*  pSrvOrNull = nullptr;
+        ID3D11UnorderedAccessView* pUavOrNull = nullptr;
+        bool                       bMapped    = false;
     };
 
     struct ConstantBufferD3D11 : public ConstantBufferDesc
@@ -57,20 +57,20 @@ class Graphics
         };
         union
         {
-            ID3D11Resource*  pMsaaRtResource = nullptr;
-            ID3D11Texture2D* pMsaaRtTexture2D;
+            ID3D11Resource*  pMsaaRtResourceOrNull = nullptr;
+            ID3D11Texture2D* pMsaaRtTexture2DOrNull;
         };
         JUG_DISABLE_ANON_WARNING_END
 
-        ID3D11ShaderResourceView*  pSRV = nullptr;
-        ID3D11UnorderedAccessView* pUAV = nullptr;
+        ID3D11ShaderResourceView*  pSrvOrNull = nullptr;
+        ID3D11UnorderedAccessView* pUavOrNull = nullptr;
     };
 
     struct FrameBufferD3D11 : public FrameBufferDesc
     {
-        ARRAY<ID3D11RenderTargetView*, kNumMaxRenderTargetSlots> rtvs       = {};
-        ID3D11DepthStencilView*                                  pDSV       = nullptr;
-        ISwapChain*                                              pSwapChain = nullptr;
+        ARRAY<ID3D11RenderTargetView*, kNumMaxRenderTargetSlots> rtvs             = {};
+        ID3D11DepthStencilView*                                  pDsvOrNull       = nullptr;
+        ISwapChain*                                              pSwapChainOrNull = nullptr;
     };
 
     struct ShaderD3D11 : public ShaderDesc
@@ -134,7 +134,7 @@ class Graphics
     {
         [[nodiscard]] bool operator==(const Sampler& _other) const = default;
 
-        Flags<eSampler> flags  = {};
+        Flags<eSampler> flags  = eSampler::None;
         RGBA            border = {};
     };
 
@@ -186,7 +186,8 @@ class Graphics
         ID3D11Query* pEnd       = nullptr;
         ID3D11Query* pDisjoint  = nullptr;
         uint64_t     frameIndex = 0;
-        bool         bIssued    = false;
+        bool         bIssued    = false;   // Begin_ 호출됨. 결과를 모두 읽기 전까지 재사용 금지.
+        bool         bEnded     = false;   // End 호출됨.
     };
 
     struct ResolveBufferRefResult
@@ -197,7 +198,7 @@ class Graphics
     };
 
 public:
-    explicit Graphics(bool _bEnableDebugLayer);
+    explicit Graphics(Flags<eGraphicsOption> _flags);
     ~Graphics();
 
     [[nodiscard]] static Graphics& GetSingleton();
@@ -262,7 +263,7 @@ public:
 
     [[nodiscard]] StorageBufferHandle CreateIndirectBuffer(
         uint32_t                    _numDraws,
-        Flags<eStorageBufferOption> _flags);
+        Flags<eStorageBufferOption> _flags = eStorageBufferOption::None);
 
     // ===========================================
     //  Buffer Utils
@@ -288,7 +289,7 @@ public:
         uint32_t  _dstOffset,
         BufferRef _src,
         uint32_t  _srcOffset,
-        uint32_t  _byteWidthOrZero = 0);
+        uint32_t  _byteWidthOrInvalid);   // kInvalidIndex 이면 src 끝까지
 
     [[nodiscard]] size_t ReadBuffer(
         StorageBufferHandle _readbackSbh,
@@ -299,29 +300,29 @@ public:
     // ===========================================
 
     [[nodiscard]] TextureHandle CreateTexture2D(
-        uint32_t               _width,
-        uint32_t               _height,
-        eTextureFormat         _format,
-        uint32_t               _numLayers       = 1,
-        eMSAA                  _msaa            = eMSAA::None,
-        Flags<eTextureOption>  _flags           = eTextureOption::None,
-        Span<const MemoryView> _initDataOrEmpty = {});
+        uint32_t              _width,
+        uint32_t              _height,
+        eTextureFormat        _format,
+        uint32_t              _numLayers       = 1,
+        eMSAA                 _msaa            = eMSAA::None,
+        Flags<eTextureOption> _flags           = eTextureOption::None,
+        MemoryView            _initDataOrEmpty = {});
 
     [[nodiscard]] TextureHandle CreateTextureCube(
-        uint32_t               _width,
-        uint32_t               _height,
-        eTextureFormat         _format,
-        uint32_t               _numCubes        = 1,
-        Flags<eTextureOption>  _flags           = eTextureOption::None,
-        Span<const MemoryView> _initDataOrEmpty = {});
+        uint32_t              _width,
+        uint32_t              _height,
+        eTextureFormat        _format,
+        uint32_t              _numCubes        = 1,
+        Flags<eTextureOption> _flags           = eTextureOption::None,
+        MemoryView            _initDataOrEmpty = {});
 
     [[nodiscard]] TextureHandle CreateTexture3D(
-        uint32_t               _width,
-        uint32_t               _height,
-        uint32_t               _depth,
-        eTextureFormat         _format,
-        Flags<eTextureOption>  _flags           = eTextureOption::None,
-        Span<const MemoryView> _initDataOrEmpty = {});
+        uint32_t              _width,
+        uint32_t              _height,
+        uint32_t              _depth,
+        eTextureFormat        _format,
+        Flags<eTextureOption> _flags           = eTextureOption::None,
+        MemoryView            _initDataOrEmpty = {});
 
     void UpdateTexture2D(
         TextureHandle _texh,
@@ -372,9 +373,9 @@ public:
         uint32_t      _srcX,
         uint32_t      _srcY,
         uint32_t      _srcZ,
-        uint32_t      _widthOrZero,
-        uint32_t      _heightOrZero,
-        uint32_t      _depthOrZero);
+        uint32_t      _widthOrInvalid,   // kInvalidIndex 이면 src 끝까지
+        uint32_t      _heightOrInvalid,
+        uint32_t      _depthOrInvalid);
 
     [[nodiscard]] size_t ReadTexture(
         TextureHandle     _readbackTexh,
@@ -401,7 +402,7 @@ public:
         eTextureFormat _format,
         uint32_t       _numBuffers);
 
-    [[nodiscard]] FrameBufferHandle FindFrameBufferOrNull(
+    [[nodiscard]] FrameBufferHandle FindFrameBufferOrInvalid(
         SDL_WindowID _wndID);
 
     void ResizeFrameBuffer(
@@ -495,56 +496,56 @@ public:
     // ===========================================
 
     void SetVertexBuffer(
-        VertexBufferHandle _vbh,
-        uint32_t           _offset            = 0,
-        uint32_t           _numVerticesOrZero = 0);
+        VertexBufferHandle _vbhOrInvalid,
+        uint32_t           _offset               = 0,
+        uint32_t           _numVerticesOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 버퍼 끝까지
 
     void SetVertexBuffers(
         Span<const VertexStream> _streams,
-        uint32_t                 _numVerticesOrZero = 0);
+        uint32_t                 _numVerticesOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 스트림 전체
 
     void SetVertexBuffer(
-        VertexBufferHandle   _vbh,
+        VertexBufferHandle   _vbhOrInvalid,
         uint32_t             _offset,
-        uint32_t             _numVerticesOrZero,
-        InstanceBufferHandle _instbh,
-        uint32_t             _instanceOffset     = 0,
-        uint32_t             _numInstancesOrZero = 0);
+        uint32_t             _numVerticesOrInvalid,
+        InstanceBufferHandle _instbhOrInvalid,
+        uint32_t             _instanceOffset        = 0,
+        uint32_t             _numInstancesOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 버퍼 끝까지
 
     void SetVertexBuffers(
         Span<const VertexStream> _streams,
-        uint32_t                 _numVerticesOrZero,
-        InstanceBufferHandle     _instbh,
-        uint32_t                 _instanceOffset     = 0,
-        uint32_t                 _numInstancesOrZero = 0);
+        uint32_t                 _numVerticesOrInvalid,
+        InstanceBufferHandle     _instbhOrInvalid,
+        uint32_t                 _instanceOffset        = 0,
+        uint32_t                 _numInstancesOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 버퍼 끝까지
 
     void SetIndexBuffer(
-        IndexBufferHandle _ibh,
-        uint32_t          _offset           = 0,
-        uint32_t          _numIndicesOrZero = 0);
+        IndexBufferHandle _ibhOrInvalid,
+        uint32_t          _offset              = 0,
+        uint32_t          _numIndicesOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 버퍼 끝까지
 
     void SetConstantBuffer(
-        ConstantBufferHandle _cbh,
+        ConstantBufferHandle _cbhOrInvalid,
         eShader              _shader,
         uint32_t             _slot);
 
     void SetTexture(
-        TextureHandle _texh,
+        TextureHandle _texhOrInvalid,
         eShader       _shader,
         uint32_t      _slot);
 
     void SetTextureRW(
-        TextureHandle _texh,
+        TextureHandle _texhOrInvalid,
         eShaderRW     _shader,
         uint32_t      _slot);
 
     void SetBuffer(
-        StorageBufferHandle _sbh,
+        StorageBufferHandle _sbhOrInvalid,
         eShader             _shader,
         uint32_t            _slot);
 
     void SetBufferRW(
-        StorageBufferHandle _sbh,
+        StorageBufferHandle _sbhOrInvalid,
         eShaderRW           _shader,
         uint32_t            _slot);
 
@@ -570,18 +571,18 @@ public:
         RGBA _factor);
 
     void SetStencil(
-        Flags<eStencil> _front,
-        Flags<eStencil> _back,
+        Flags<eStencil> _frontFlags,
+        Flags<eStencil> _backFlags,
         uint8_t         _stencilRef = 0);
 
     void SetProgram(
-        ProgramHandle _ph);
+        ProgramHandle _phOrInvalid);
 
     void SetComputeProgram(
-        ProgramHandle _ph);
+        ProgramHandle _phOrInvalid);
 
     void SetFrameBuffer(
-        FrameBufferHandle _fbh);
+        FrameBufferHandle _fbhOrInvalid);
 
     void SetViewport(
         float _x,
@@ -610,8 +611,8 @@ public:
 
     void Submit(
         StorageBufferHandle _indirectSbh,
-        uint32_t            _offset         = 0,
-        uint32_t            _numDrawsOrZero = 0);
+        uint32_t            _offset            = 0,
+        uint32_t            _numDrawsOrInvalid = kInvalidIndex);   // kInvalidIndex 이면 버퍼 끝까지
 
     void Dispatch(
         uint32_t _numGroupsX,
@@ -627,10 +628,16 @@ private:
     //  Init
     // ===========================================
 
-    void InitDevice_(bool _bEnableDebugLayer);
-    void InitDebugInterfacesIfNeed_();
+    void InitDevice_();
+    void InitDebugInterfaces_();
     void InitTimerQueries_();
     void CleanUpTimerQueries_();
+
+    // ===========================================
+    //  Diagnostics
+    // ===========================================
+
+    void FlushDebugMessages_();
 
     // ===========================================
     //  Buffer
@@ -686,15 +693,15 @@ private:
         eMSAA       _msaa) const;
 
     [[nodiscard]] TextureD3D11 CreateTexture_(
-        uint32_t               _width,
-        uint32_t               _height,
-        uint32_t               _depth,
-        eTexture               _type,
-        eTextureFormat         _format,
-        uint32_t               _numLayers,
-        eMSAA                  _msaa,
-        Flags<eTextureOption>  _flags,
-        Span<const MemoryView> _initData) const;
+        uint32_t              _width,
+        uint32_t              _height,
+        uint32_t              _depth,
+        eTexture              _type,
+        eTextureFormat        _format,
+        uint32_t              _numLayers,
+        eMSAA                 _msaa,
+        Flags<eTextureOption> _flags,
+        MemoryView            _initDataOrEmpty) const;
 
     void UpdateTexture_(
         TextureHandle _texh,
@@ -712,7 +719,7 @@ private:
     //  Resources
     // ===========================================
 
-    [[nodiscard]] ID3D11InputLayout*       GetOrCreateD3d11InputLayout_();
+    [[nodiscard]] ID3D11InputLayout*       GetOrCreateD3d11InputLayoutOrNull_();
     [[nodiscard]] ID3D11SamplerState*      GetOrCreateSamplerState_(Flags<eSampler> _flags, RGBA _border);
     [[nodiscard]] ID3D11RasterizerState*   GetOrCreateRasterizerState_();
     [[nodiscard]] ID3D11BlendState*        GetOrCreateBlendState_();
@@ -733,8 +740,10 @@ private:
     ID3D11Debug*               m_pD3d11DebugOrNull     = nullptr;
     ID3D11InfoQueue*           m_pD3d11InfoQueueOrNull = nullptr;
     ID3DUserDefinedAnnotation* m_pUserAnnotationOrNull = nullptr;
+    uint64_t                   m_numDebugMsgsDropped   = 0;
 
-    GraphicsCaps m_caps = {};
+    Flags<eGraphicsOption> m_flags = eGraphicsOption::None;
+    GraphicsCaps           m_caps  = {};
 
     // ===========================================
     //  ResourceRef
@@ -769,7 +778,7 @@ private:
     //  Pipeline State
     // ===========================================
 
-    Flags<ePipelineDirty> m_dirtyFlags = kAllFlag;
+    Flags<ePipelineDirty> m_dirtyFlags = kAllFlags;
 
     ARRAY<ID3D11Buffer*, kNumMaxStreams>      m_d3d11VertexBuffers = {};
     ARRAY<VertexBufferHandle, kNumMaxStreams> m_vbhs               = {};
@@ -779,25 +788,25 @@ private:
     uint32_t                                  m_numStreams         = 0;
     uint32_t                                  m_numVertices        = 0;
 
-    ID3D11Buffer*     m_pD3d11IndexBuffer = nullptr;
-    DXGI_FORMAT       m_dxgiIndexFormat   = DXGI_FORMAT_UNKNOWN;
-    uint32_t          m_indexOffset       = 0;
-    uint32_t          m_numIndices        = 0;
-    IndexBufferHandle m_ibh               = kNullHandle;
+    ID3D11Buffer*     m_pD3d11IndexBufferOrNull = nullptr;
+    DXGI_FORMAT       m_dxgiIndexFormat         = DXGI_FORMAT_UNKNOWN;
+    uint32_t          m_indexOffset             = 0;
+    uint32_t          m_numIndices              = 0;
+    IndexBufferHandle m_ibhOrInvalid               = kInvalidHandle;
 
-    ID3D11Buffer*        m_pD3d11InstanceBuffer = nullptr;
-    uint32_t             m_instanceDataStride   = 0;
-    uint32_t             m_instanceOffset       = 0;
-    InstanceBufferHandle m_instbh               = kNullHandle;
-    uint32_t             m_numInstances         = 0;
+    ID3D11Buffer*        m_pD3d11InstanceBufferOrNull = nullptr;
+    uint32_t             m_instanceDataStride         = 0;
+    uint32_t             m_instanceOffset             = 0;
+    InstanceBufferHandle m_instbhOrInvalid               = kInvalidHandle;
+    uint32_t             m_numInstances               = 0;
 
     ENUM_ARRAY<eShader, ReadBind>        m_readBind      = {};
     ENUM_ARRAY<eShader, CBufferBind>     m_cbufferBind   = {};
     ENUM_ARRAY<eShader, SamplerBind>     m_samplerBind   = {};
     ENUM_ARRAY<eShaderRW, ReadWriteBind> m_readWriteBind = {};
 
-    FrameBufferHandle m_fbh     = kNullHandle;
-    FrameBufferHandle m_lastFbh = kNullHandle;   // for resolve
+    FrameBufferHandle m_fbhOrInvalid     = kInvalidHandle;
+    FrameBufferHandle m_lastFbhOrInvalid = kInvalidHandle;   // for resolve
 
     float m_viewportX = 0.f;
     float m_viewportY = 0.f;
@@ -809,15 +818,15 @@ private:
     int m_scissorW = 0;
     int m_scissorH = 0;
 
-    ProgramHandle                      m_ph           = kNullHandle;
-    ProgramHandle                      m_computePh    = kNullHandle;
-    ENUM_ARRAY<eSubmitParam, uint32_t> m_submitParams = {};
+    ProgramHandle                      m_phOrInvalid        = kInvalidHandle;
+    ProgramHandle                      m_computePhOrInvalid = kInvalidHandle;
+    ENUM_ARRAY<eSubmitParam, uint32_t> m_submitParams    = {};
 
     Flags<eRenderState>                            m_renderStateFlags = eRenderState::None;
     ARRAY<Flags<eBlend>, kNumMaxRenderTargetSlots> m_blendFlags       = {};
     RGBA                                           m_blendFactor      = {};
-    Flags<eStencil>                                m_fstencilFlags    = {};
-    Flags<eStencil>                                m_bstencilFlags    = {};
+    Flags<eStencil>                                m_fstencilFlags    = kNoneFlags;
+    Flags<eStencil>                                m_bstencilFlags    = kNoneFlags;
     uint8_t                                        m_stencilRef       = 0;
 
     GraphicsStats m_stats     = {};
@@ -825,17 +834,17 @@ private:
 
     uint64_t m_frameIndex = 0;
 
-    static constexpr size_t kNumInitTimerQueries = 8;
-    RingBuffer<TimerQuery>  m_timerQueries { kNumInitTimerQueries };
+    static constexpr size_t kNumTimerQueries = 16;
+    RingBuffer<TimerQuery>  m_timerQueries { kNumTimerQueries };
 };
 
 }   // namespace jug
 
-#define JUG_GFX_DESTROY(_handle)                       \
-    JUG_BEGIN_MACRO_BLOCK                              \
-    if (_handle != jug::kNullHandle)                   \
-    {                                                  \
+#define JUG_GFX_DESTROY(_handle)                        \
+    JUG_BEGIN_MACRO_BLOCK                               \
+    if (_handle != jug::kInvalidHandle)                    \
+    {                                                   \
         jug::Graphics::GetSingleton().Destroy(_handle); \
-        _handle = jug::kNullHandle;                    \
-    }                                                  \
+        _handle = jug::kInvalidHandle;                     \
+    }                                                   \
     JUG_END_MACRO_BLOCK

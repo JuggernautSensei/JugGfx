@@ -21,6 +21,9 @@ enum class eVertexAttribute
     BlendWeight,
 };
 
+constexpr size_t kNumMaxVertexColorAttributes    = 4;
+constexpr size_t kNumMaxVertexTexCoordAttributes = 4;
+
 enum class eVertexAttributeFormat
 {
     Float,
@@ -34,7 +37,7 @@ struct VertexAttribute
     {
         return num > 0;
     }
-
+    //
     eVertexAttribute       attrib      = eVertexAttribute::Position;
     eVertexAttributeFormat format      = eVertexAttributeFormat::Float;
     uint32_t               num         = 0;

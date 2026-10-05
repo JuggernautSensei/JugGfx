@@ -189,6 +189,79 @@ namespace
         return MakeSystemError(_hr, eSystemError::OS).MakeMessage();
     }
 
+    [[nodiscard]] StringView ToString_(
+        const D3D_DRIVER_TYPE _type)
+    {
+        switch (_type)
+        {
+            case D3D_DRIVER_TYPE_UNKNOWN: return "adapter";
+            case D3D_DRIVER_TYPE_HARDWARE: return "hardware";
+            case D3D_DRIVER_TYPE_REFERENCE: return "reference";
+            case D3D_DRIVER_TYPE_NULL: return "null";
+            case D3D_DRIVER_TYPE_SOFTWARE: return "software";
+            case D3D_DRIVER_TYPE_WARP: return "warp";
+        }
+        return "?";
+    }
+
+    [[nodiscard]] StringView ToString_(
+        const D3D_FEATURE_LEVEL _level)
+    {
+        switch (_level)
+        {
+            case D3D_FEATURE_LEVEL_9_1: return "9_1";
+            case D3D_FEATURE_LEVEL_9_2: return "9_2";
+            case D3D_FEATURE_LEVEL_9_3: return "9_3";
+            case D3D_FEATURE_LEVEL_10_0: return "10_0";
+            case D3D_FEATURE_LEVEL_10_1: return "10_1";
+            case D3D_FEATURE_LEVEL_11_0: return "11_0";
+            case D3D_FEATURE_LEVEL_11_1: return "11_1";
+            default: return "?";
+        }
+    }
+
+    // 로그용 enum 이름 (EnumRefl). 범위 밖 값이어도 assert 하지 않는다.
+    template<EnumT E>
+    [[nodiscard]] StringView ToString_(
+        const E _value)
+    {
+        return IsValid(_value) ? NameOf(_value) : StringView { "?" };
+    }
+
+    [[nodiscard]] StringView ToString_(
+        const D3D11_MESSAGE_CATEGORY _category)
+    {
+        switch (_category)
+        {
+            case D3D11_MESSAGE_CATEGORY_APPLICATION_DEFINED: return "APPLICATION";
+            case D3D11_MESSAGE_CATEGORY_MISCELLANEOUS: return "MISC";
+            case D3D11_MESSAGE_CATEGORY_INITIALIZATION: return "INIT";
+            case D3D11_MESSAGE_CATEGORY_CLEANUP: return "CLEANUP";
+            case D3D11_MESSAGE_CATEGORY_COMPILATION: return "COMPILATION";
+            case D3D11_MESSAGE_CATEGORY_STATE_CREATION: return "STATE_CREATION";
+            case D3D11_MESSAGE_CATEGORY_STATE_SETTING: return "STATE_SETTING";
+            case D3D11_MESSAGE_CATEGORY_STATE_GETTING: return "STATE_GETTING";
+            case D3D11_MESSAGE_CATEGORY_RESOURCE_MANIPULATION: return "RESOURCE";
+            case D3D11_MESSAGE_CATEGORY_EXECUTION: return "EXECUTION";
+            case D3D11_MESSAGE_CATEGORY_SHADER: return "SHADER";
+        }
+        return "?";
+    }
+
+    [[nodiscard]] spdlog::level::level_enum ToLogLevel_(
+        const D3D11_MESSAGE_SEVERITY _severity)
+    {
+        switch (_severity)
+        {
+            case D3D11_MESSAGE_SEVERITY_CORRUPTION: return spdlog::level::critical;
+            case D3D11_MESSAGE_SEVERITY_ERROR: return spdlog::level::err;
+            case D3D11_MESSAGE_SEVERITY_WARNING: return spdlog::level::warn;
+            case D3D11_MESSAGE_SEVERITY_INFO: return spdlog::level::info;
+            case D3D11_MESSAGE_SEVERITY_MESSAGE: return spdlog::level::trace;
+        }
+        return spdlog::level::info;
+    }
+
     void SetD3d11ObjectName_(
         ID3D11DeviceChild* _pD3d11DeviceChild,
         const StringView   _name)
@@ -205,8 +278,6 @@ namespace
     {
         switch (_format)
         {
-            case eTextureFormat::Unknown: return {};
-
             case eTextureFormat::R8_UNorm: return { DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
             case eTextureFormat::R8_SNorm: return { DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_SNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
             case eTextureFormat::R8_UInt: return { DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8_UINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
@@ -267,6 +338,21 @@ namespace
             case eTextureFormat::D32_Float: return { DXGI_FORMAT_R32_TYPELESS, DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_UNKNOWN };
             case eTextureFormat::D32_Float_S8_UInt: return { DXGI_FORMAT_R32G8X24_TYPELESS, DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_D32_FLOAT_S8X24_UINT, DXGI_FORMAT_UNKNOWN };
 
+            case eTextureFormat::BC1_UNorm: return { DXGI_FORMAT_BC1_TYPELESS, DXGI_FORMAT_BC1_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC1_UNORM_SRGB };
+            case eTextureFormat::BC1_UNorm_SRGB: return { DXGI_FORMAT_BC1_TYPELESS, DXGI_FORMAT_BC1_UNORM_SRGB, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC1_UNORM_SRGB };
+            case eTextureFormat::BC2_UNorm: return { DXGI_FORMAT_BC2_TYPELESS, DXGI_FORMAT_BC2_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC2_UNORM_SRGB };
+            case eTextureFormat::BC2_UNorm_SRGB: return { DXGI_FORMAT_BC2_TYPELESS, DXGI_FORMAT_BC2_UNORM_SRGB, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC2_UNORM_SRGB };
+            case eTextureFormat::BC3_UNorm: return { DXGI_FORMAT_BC3_TYPELESS, DXGI_FORMAT_BC3_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC3_UNORM_SRGB };
+            case eTextureFormat::BC3_UNorm_SRGB: return { DXGI_FORMAT_BC3_TYPELESS, DXGI_FORMAT_BC3_UNORM_SRGB, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC3_UNORM_SRGB };
+            case eTextureFormat::BC4_UNorm: return { DXGI_FORMAT_BC4_TYPELESS, DXGI_FORMAT_BC4_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC4_SNorm: return { DXGI_FORMAT_BC4_TYPELESS, DXGI_FORMAT_BC4_SNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC5_UNorm: return { DXGI_FORMAT_BC5_TYPELESS, DXGI_FORMAT_BC5_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC5_SNorm: return { DXGI_FORMAT_BC5_TYPELESS, DXGI_FORMAT_BC5_SNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC6H_UFloat: return { DXGI_FORMAT_BC6H_TYPELESS, DXGI_FORMAT_BC6H_UF16, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC6H_SFloat: return { DXGI_FORMAT_BC6H_TYPELESS, DXGI_FORMAT_BC6H_SF16, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN };
+            case eTextureFormat::BC7_UNorm: return { DXGI_FORMAT_BC7_TYPELESS, DXGI_FORMAT_BC7_UNORM, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC7_UNORM_SRGB };
+            case eTextureFormat::BC7_UNorm_SRGB: return { DXGI_FORMAT_BC7_TYPELESS, DXGI_FORMAT_BC7_UNORM_SRGB, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_BC7_UNORM_SRGB };
+
             default: JUG_ASSERT(false, "Unsupported texture format."); return {};
         }
     }
@@ -316,12 +402,12 @@ namespace
     }
 
     [[nodiscard]] D3D11_BLEND_DESC MakeBlendDesc_(
-        const Flags<eRenderState>                                  _state,
+        const Flags<eRenderState>                                  _stateFlags,
         const Span<const Flags<eBlend>, kNumMaxRenderTargetSlots>& _blends)
     {
         D3D11_BLEND_DESC bd       = {};
-        bd.AlphaToCoverageEnable  = _state.Has(eRenderState::AlphaToCoverage) ? TRUE : FALSE;
-        bd.IndependentBlendEnable = _state.Has(eRenderState::IndependentBlend) ? TRUE : FALSE;
+        bd.AlphaToCoverageEnable  = _stateFlags.Has(eRenderState::AlphaToCoverage) ? TRUE : FALSE;
+        bd.IndependentBlendEnable = _stateFlags.Has(eRenderState::IndependentBlend) ? TRUE : FALSE;
 
         const size_t numLoops = bd.IndependentBlendEnable ? _blends.size() : 1;
         for (size_t i = 0; i < numLoops; ++i)
@@ -548,41 +634,64 @@ namespace
     }
 
     [[nodiscard]] D3D11_SAMPLER_DESC MakeSamplerDesc_(
-        const Flags<eSampler> _state,
+        const Flags<eSampler> _flags,
         const RGBA            _borderColor)
     {
         D3D11_SAMPLER_DESC sd = {};
 
         // filter
-        const Flags<eSampler> filterFlags  = FilterFilter(_state);
+        const Flags<eSampler> filterFlags  = FilterFilter(_flags);
         const eSampler        filter       = static_cast<eSampler>(filterFlags.GetFlags());
-        const Flags<eSampler> compareFlags = FilterCompare(_state);
+        const Flags<eSampler> compareFlags = FilterCompare(_flags);
         const eSampler        compare      = static_cast<eSampler>(compareFlags.GetFlags());
         const bool            bComparison  = compare != eSampler::Compare_None;
-        switch (filter)   // NOLINT(clang-diagnostic-switch-enum)
+        const eSampler aniso = static_cast<eSampler>(filterFlags.GetFlags() & static_cast<uint32_t>(eSampler::Filter_Anisotropic16));
+        if (aniso == eSampler::None)
         {
-            case eSampler::Filter_MinPoint_MagPoint_MipPoint: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT : D3D11_FILTER_MIN_MAG_MIP_POINT; break;
-            case eSampler::Filter_MinPoint_MagPoint_MipLinear: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR : D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR; break;
-            case eSampler::Filter_MinPoint_MagLinear_MipPoint: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT; break;
-            case eSampler::Filter_MinPoint_MagLinear_MipLinear: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR : D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR; break;
-            case eSampler::Filter_MinLinear_MagPoint_MipPoint: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT : D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT; break;
-            case eSampler::Filter_MinLinear_MagPoint_MipLinear: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR : D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR; break;
-            case eSampler::Filter_MinLinear_MagLinear_MipPoint: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT : D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT; break;
-            case eSampler::Filter_MinLinear_MagLinear_MipLinear: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR : D3D11_FILTER_MIN_MAG_MIP_LINEAR; break;
-            case eSampler::Filter_Anisotropic4: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC; break;
-            case eSampler::Filter_Anisotropic8: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC; break;
-            case eSampler::Filter_Anisotropic16: sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC; break;
-            default: JUG_ASSERT(false, "Unsupported filter."); break;
+            // index: min(4) | mag(2) | mip(1)
+            constexpr std::array<D3D11_FILTER, 8> kFilters = std::to_array<D3D11_FILTER>({
+                D3D11_FILTER_MIN_MAG_MIP_POINT,
+                D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR,
+                D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT,
+                D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR,
+                D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT,
+                D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+                D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
+                D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+            });
+            constexpr std::array<D3D11_FILTER, 8> kComparisonFilters = std::to_array<D3D11_FILTER>({
+                D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+                D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR,
+                D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT,
+                D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
+                D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT,
+                D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+                D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
+                D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
+            });
+
+            // enum bit: min(1) | mag(2) | mip(4) -> table index: min(4) | mag(2) | mip(1)
+            const uint32_t bits  = static_cast<uint32_t>(filter);
+            const size_t   index = ((bits & 1u) << 2) | (bits & 2u) | ((bits >> 2) & 1u);
+            sd.Filter          = bComparison ? kComparisonFilters[index] : kFilters[index];
+            sd.MaxAnisotropy   = 1;
+        }
+        else
+        {
+            // anisotropic 은 min/mag/mip 과 함께 쓸 수 없음
+            JUG_ASSERT(filter == aniso, "Anisotropic filter must not be combined with min/mag/mip.");
+            sd.Filter = bComparison ? D3D11_FILTER_COMPARISON_ANISOTROPIC : D3D11_FILTER_ANISOTROPIC;
+            switch (aniso)   // NOLINT(clang-diagnostic-switch-enum)
+            {
+                case eSampler::Filter_Anisotropic4: sd.MaxAnisotropy = 4; break;
+                case eSampler::Filter_Anisotropic8: sd.MaxAnisotropy = 8; break;
+                case eSampler::Filter_Anisotropic16: sd.MaxAnisotropy = 16; break;
+                default: JUG_ASSERT(false, "Unsupported anisotropic filter."); break;
+            }
         }
 
-        // anisotropic
-        sd.MaxAnisotropy = filter == eSampler::Filter_Anisotropic4  ? 4
-                         : filter == eSampler::Filter_Anisotropic8  ? 8
-                         : filter == eSampler::Filter_Anisotropic16 ? 16
-                                                                    : 1;
-
         // address u
-        const Flags<eSampler> uFlags = FilterU(_state);
+        const Flags<eSampler> uFlags = FilterU(_flags);
         const eSampler        u      = static_cast<eSampler>(uFlags.GetFlags());
         switch (u)   // NOLINT(clang-diagnostic-switch-enum)
         {
@@ -595,7 +704,7 @@ namespace
         }
 
         // address v
-        const Flags<eSampler> vFlags = FilterV(_state);
+        const Flags<eSampler> vFlags = FilterV(_flags);
         const eSampler        v      = static_cast<eSampler>(vFlags.GetFlags());
         switch (v)   // NOLINT(clang-diagnostic-switch-enum)
         {
@@ -608,7 +717,7 @@ namespace
         }
 
         // address w
-        const Flags<eSampler> wFlags = FilterW(_state);
+        const Flags<eSampler> wFlags = FilterW(_flags);
         const eSampler        w      = static_cast<eSampler>(wFlags.GetFlags());
         switch (w)   // NOLINT(clang-diagnostic-switch-enum)
         {
@@ -637,17 +746,17 @@ namespace
             default: JUG_ASSERT(false, "Unsupported comparison func."); break;
         }
 
-        const VECTOR4 rgba = _borderColor.ToLinear();
-        sd.BorderColor[0]  = rgba.x;
-        sd.BorderColor[1]  = rgba.y;
-        sd.BorderColor[2]  = rgba.z;
-        sd.BorderColor[3]  = rgba.w;
-        sd.MinLOD          = 0.f;
-        sd.MaxLOD          = D3D11_FLOAT32_MAX;
+        const VEC4 rgba   = _borderColor.ToLinear();
+        sd.BorderColor[0] = rgba.x;
+        sd.BorderColor[1] = rgba.y;
+        sd.BorderColor[2] = rgba.z;
+        sd.BorderColor[3] = rgba.w;
+        sd.MinLOD         = 0.f;
+        sd.MaxLOD         = D3D11_FLOAT32_MAX;
         return sd;
     }
 
-    [[nodiscard]] String QueryD3d11DebugNameOrEmpty_(
+    [[nodiscard]] String QueryD3d11DebugName_(
         ID3D11DeviceChild* _pD3dd11DeviceChild)
     {
         JUG_ASSERT(_pD3dd11DeviceChild, "Invalid D3D11 device child pointer.");
@@ -694,16 +803,35 @@ namespace
 // ===========================================
 
 Graphics::Graphics(
-    const bool _bEnableDebugLayer)
+    const Flags<eGraphicsOption> _flags)
 {
     JUG_ASSERT(!g_pSingleton, "Graphics instance already exists.");
     g_pSingleton = this;
 
-    m_caps.bDebugLayerEnabled = _bEnableDebugLayer;
+    Timer timer = {};
+    timer.Start();
+
+    // caps 초기화
+    m_caps.flags = _flags;
     m_dxgi.FillCaps(m_caps);
-    InitDevice_(m_caps.bDebugLayerEnabled);
-    InitTimerQueries_();
-    InitDebugInterfacesIfNeed_();
+
+    // device 생성
+    InitDevice_();
+
+    if (_flags & eGraphicsOption::Debug)
+    {
+        InitDebugInterfaces_();
+        FlushDebugMessages_();   // 디바이스 생성 중 쌓인 메시지
+    }
+
+    if (_flags & eGraphicsOption::ProfileFrameTime)
+    {
+        InitTimerQueries_();
+    }
+
+    timer.Stop();
+    const ReadableTimeF time = ToReadableTimeF(timer.GetTotalCount());
+    JUG_CORE_LOG_INFO("Graphics initialized in {:.1f} {}", time.time, time.unitName);
 }
 
 Graphics::~Graphics()
@@ -716,21 +844,21 @@ Graphics::~Graphics()
     m_pD3d11DeviceContext->Flush();
 
     // 타이머 파괴
-    CleanUpTimerQueries_();
+    if (m_caps.flags & eGraphicsOption::ProfileFrameTime)
+    {
+        CleanUpTimerQueries_();
+    }
 
     // 전체화면 상태로 스왑체인을 놓으면 즉시 크래시한다. 모두 창모드로 변경
     for (FrameBufferD3D11& frameBuffer: m_frameBufferPool.GetResources())
     {
-        if (frameBuffer.pSwapChain)
+        if (frameBuffer.pSwapChainOrNull)
         {
-            JUG_DISCARD_RETURN(frameBuffer.pSwapChain->SetFullscreenState(FALSE, nullptr));
+            JUG_DX_CHECK(frameBuffer.pSwapChainOrNull->SetFullscreenState(FALSE, nullptr));
         }
     }
 
-    if (ReportLiveObjects() > 0)
-    {
-        JUG_ASSERT(false, "There are leaked graphics resources. Check the log for details.");
-    }
+    JUG_ASSERT(ReportLiveObjects() == 0, "There are leaked graphics resources. Check the log for details.");
 
     for (FrameBufferD3D11& frameBuffer: m_frameBufferPool.GetResources())
     {
@@ -738,8 +866,8 @@ Graphics::~Graphics()
         {
             JUG_DX_RELEASE(pRTV);
         }
-        JUG_DX_RELEASE(frameBuffer.pDSV);
-        JUG_DX_RELEASE(frameBuffer.pSwapChain);
+        JUG_DX_RELEASE(frameBuffer.pDsvOrNull);
+        JUG_DX_RELEASE(frameBuffer.pSwapChainOrNull);
     }
 
     for (VertexBufferD3D11& vertexBuffer: m_vertexBufferPool.GetResources())
@@ -764,16 +892,16 @@ Graphics::~Graphics()
 
     for (StorageBufferD3D11& storageBuffer: m_storageBufferPool.GetResources())
     {
-        JUG_DX_RELEASE(storageBuffer.pSRV);
-        JUG_DX_RELEASE(storageBuffer.pUAV);
+        JUG_DX_RELEASE(storageBuffer.pSrvOrNull);
+        JUG_DX_RELEASE(storageBuffer.pUavOrNull);
         JUG_DX_RELEASE(storageBuffer.pBuffer);
     }
 
     for (TextureD3D11& texture: m_texturePool.GetResources())
     {
-        JUG_DX_RELEASE(texture.pSRV);
-        JUG_DX_RELEASE(texture.pUAV);
-        JUG_DX_RELEASE(texture.pMsaaRtResource);
+        JUG_DX_RELEASE(texture.pSrvOrNull);
+        JUG_DX_RELEASE(texture.pUavOrNull);
+        JUG_DX_RELEASE(texture.pMsaaRtResourceOrNull);
         JUG_DX_RELEASE(texture.pResource);
     }
 
@@ -838,14 +966,16 @@ Graphics::~Graphics()
 
     JUG_DX_RELEASE(m_pUploadBuffer);
     JUG_DX_RELEASE(m_pUserAnnotationOrNull);
-    JUG_DX_RELEASE(m_pD3d11InfoQueueOrNull);
     JUG_DX_RELEASE(m_pD3d11DeviceContext);
     JUG_DX_RELEASE(m_pD3d11Device);
     if (m_pD3d11DebugOrNull)
     {
-        JUG_DISCARD_RETURN(m_pD3d11DebugOrNull->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL));
+        // info queue 를 아직 쥐고 있어야 리포트가 로그로 넘어온다. 그래서 디바이스 refcount 에 info queue 몫 1 이 더 보인다.
+        JUG_DX_CHECK(m_pD3d11DebugOrNull->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL));
         JUG_DX_RELEASE(m_pD3d11DebugOrNull);
     }
+    FlushDebugMessages_();
+    JUG_DX_RELEASE(m_pD3d11InfoQueueOrNull);
 }
 
 // ===========================================
@@ -865,69 +995,69 @@ size_t Graphics::ReportLiveObjects()
     for (auto it = m_vertexBufferPool.Begin(); it != m_vertexBufferPool.End(); ++it)
     {
         const VertexBufferD3D11& vb          = *it;
-        const String             nameOrEmpty = QueryD3d11DebugNameOrEmpty_(vb.pBuffer);
-        JUG_CORE_LOG_WARN("Leaked VertexBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String             name = QueryD3d11DebugName_(vb.pBuffer);
+        JUG_CORE_LOG_WARN("Leaked VertexBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_instanceBufferPool.Begin(); it != m_instanceBufferPool.End(); ++it)
     {
         const InstanceBufferD3D11& instb       = *it;
-        const String               nameOrEmpty = QueryD3d11DebugNameOrEmpty_(instb.pBuffer);
-        JUG_CORE_LOG_WARN("Leaked InstanceBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String               name = QueryD3d11DebugName_(instb.pBuffer);
+        JUG_CORE_LOG_WARN("Leaked InstanceBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_indexBufferPool.Begin(); it != m_indexBufferPool.End(); ++it)
     {
         const IndexBufferD3D11& ib          = *it;
-        const String            nameOrEmpty = QueryD3d11DebugNameOrEmpty_(ib.pBuffer);
-        JUG_CORE_LOG_WARN("Leaked IndexBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String            name = QueryD3d11DebugName_(ib.pBuffer);
+        JUG_CORE_LOG_WARN("Leaked IndexBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_storageBufferPool.Begin(); it != m_storageBufferPool.End(); ++it)
     {
         const StorageBufferD3D11& sb          = *it;
-        const String              nameOrEmpty = QueryD3d11DebugNameOrEmpty_(sb.pBuffer);
-        JUG_CORE_LOG_WARN("Leaked StorageBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String              name = QueryD3d11DebugName_(sb.pBuffer);
+        JUG_CORE_LOG_WARN("Leaked StorageBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_constantBufferPool.Begin(); it != m_constantBufferPool.End(); ++it)
     {
         const ConstantBufferD3D11& cb          = *it;
-        const String               nameOrEmpty = QueryD3d11DebugNameOrEmpty_(cb.pBuffer);
-        JUG_CORE_LOG_WARN("Leaked ConstantBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String               name = QueryD3d11DebugName_(cb.pBuffer);
+        JUG_CORE_LOG_WARN("Leaked ConstantBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_texturePool.Begin(); it != m_texturePool.End(); ++it)
     {
         const TextureD3D11& texture     = *it;
-        const String        nameOrEmpty = QueryD3d11DebugNameOrEmpty_(texture.pResource);
-        JUG_CORE_LOG_WARN("Leaked Texture: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String        name = QueryD3d11DebugName_(texture.pResource);
+        JUG_CORE_LOG_WARN("Leaked Texture: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_frameBufferPool.Begin(); it != m_frameBufferPool.End(); ++it)
     {
-        ID3D11DeviceChild* pRes = it->pDSV;
-        if (!pRes)
+        ID3D11DeviceChild* pResOrNull = it->pDsvOrNull;
+        if (!pResOrNull)
         {
-            pRes = it->rtvs[0];
-            JUG_ASSERT(pRes, "Invalid frame buffer resource.");
+            pResOrNull = it->rtvs[0];
+            JUG_ASSERT(pResOrNull, "Invalid frame buffer resource.");
         }
-        const String nameOrEmpty = QueryD3d11DebugNameOrEmpty_(pRes);
-        JUG_CORE_LOG_WARN("Leaked FrameBuffer: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String name = QueryD3d11DebugName_(pResOrNull);
+        JUG_CORE_LOG_WARN("Leaked FrameBuffer: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
     for (auto it = m_shaderPool.Begin(); it != m_shaderPool.End(); ++it)
     {
         const ShaderD3D11& shader      = *it;
-        const String       nameOrEmpty = QueryD3d11DebugNameOrEmpty_(shader.pVS);
-        JUG_CORE_LOG_WARN("Leaked Shader: Handle = {}, Name = '{}')", it.GetHandle(), nameOrEmpty);
+        const String       name = QueryD3d11DebugName_(shader.pVS);
+        JUG_CORE_LOG_WARN("Leaked Shader: Handle = {}, Name = '{}')", it.GetHandle(), name);
         ++num;
     }
 
@@ -1182,7 +1312,7 @@ void Graphics::CopyBuffer(
     const uint32_t  _dstOffset,
     const BufferRef _src,
     const uint32_t  _srcOffset,
-    const uint32_t  _byteWidthOrZero)
+    const uint32_t  _byteWidthOrInvalid)
 {
     const ResolveBufferRefResult dst = ResolveBufferRef_(_dst);
     const ResolveBufferRefResult src = ResolveBufferRef_(_src);
@@ -1190,7 +1320,7 @@ void Graphics::CopyBuffer(
     JUG_ASSERT(!dst.bDynamic, "A dynamic buffer cannot be a copy destination.");
     JUG_ASSERT(_srcOffset < src.byteWidth, "Buffer copy source offset is out of bounds.");
 
-    const uint32_t size = _byteWidthOrZero == 0 ? src.byteWidth - _srcOffset : _byteWidthOrZero;
+    const uint32_t size = _byteWidthOrInvalid == kInvalidIndex ? src.byteWidth - _srcOffset : _byteWidthOrInvalid;
 
     JUG_ASSERT(_srcOffset + size <= src.byteWidth, "Buffer copy source range is out of bounds.");
     JUG_ASSERT(_dstOffset + size <= dst.byteWidth, "Buffer copy destination range is out of bounds.");
@@ -1228,45 +1358,45 @@ size_t Graphics::ReadBuffer(
 // ===========================================
 
 TextureHandle Graphics::CreateTexture2D(
-    const uint32_t               _width,
-    const uint32_t               _height,
-    const eTextureFormat         _format,
-    const uint32_t               _numLayers,
-    const eMSAA                  _msaa,
-    const Flags<eTextureOption>  _flags,
-    const Span<const MemoryView> _initDataOrEmpty)
+    const uint32_t              _width,
+    const uint32_t              _height,
+    const eTextureFormat        _format,
+    const uint32_t              _numLayers,
+    const eMSAA                 _msaa,
+    const Flags<eTextureOption> _flags,
+    const MemoryView            _initDataOrEmpty)
 {
     const TextureHandle texh = m_texturePool.Emplace(CreateTexture_(_width, _height, 1, eTexture::Texture2D, _format, _numLayers, _msaa, _flags, _initDataOrEmpty));
     const TextureDesc&  td   = m_texturePool[texh];
-    JUG_CORE_LOG_TRACE("Texture2D created. handle = {}, {}x{}, format = {}, layers = {}, mips = {}, msaa = {}, flags = {:#x}", texh, td.width, td.height, static_cast<uint32_t>(td.format), td.numLayers, td.numMips, static_cast<uint32_t>(td.msaa), td.flags.GetFlags());
+    JUG_CORE_LOG_TRACE("Texture2D created. handle = {}, {}x{}, format = {}, layers = {}, mips = {}, msaa = {}, flags = {:#x}", texh, td.width, td.height, ToString_(td.format), td.numLayers, td.numMips, ToString_(td.msaa), td.flags.GetFlags());
     return texh;
 }
 
 TextureHandle Graphics::CreateTextureCube(
-    const uint32_t               _width,
-    const uint32_t               _height,
-    const eTextureFormat         _format,
-    const uint32_t               _numCubes,
-    const Flags<eTextureOption>  _flags,
-    const Span<const MemoryView> _initDataOrEmpty)
+    const uint32_t              _width,
+    const uint32_t              _height,
+    const eTextureFormat        _format,
+    const uint32_t              _numCubes,
+    const Flags<eTextureOption> _flags,
+    const MemoryView            _initDataOrEmpty)
 {
     const TextureHandle texh = m_texturePool.Emplace(CreateTexture_(_width, _height, 1, eTexture::TextureCube, _format, _numCubes * 6, eMSAA::None, _flags, _initDataOrEmpty));
     const TextureDesc&  td   = m_texturePool[texh];
-    JUG_CORE_LOG_TRACE("TextureCube created. handle = {}, {}x{}, format = {}, cubes = {}, mips = {}, flags = {:#x}", texh, td.width, td.height, static_cast<uint32_t>(td.format), _numCubes, td.numMips, td.flags.GetFlags());
+    JUG_CORE_LOG_TRACE("TextureCube created. handle = {}, {}x{}, format = {}, cubes = {}, mips = {}, flags = {:#x}", texh, td.width, td.height, ToString_(td.format), _numCubes, td.numMips, td.flags.GetFlags());
     return texh;
 }
 
 TextureHandle Graphics::CreateTexture3D(
-    const uint32_t               _width,
-    const uint32_t               _height,
-    const uint32_t               _depth,
-    const eTextureFormat         _format,
-    const Flags<eTextureOption>  _flags,
-    const Span<const MemoryView> _initDataOrEmpty)
+    const uint32_t              _width,
+    const uint32_t              _height,
+    const uint32_t              _depth,
+    const eTextureFormat        _format,
+    const Flags<eTextureOption> _flags,
+    const MemoryView            _initDataOrEmpty)
 {
     const TextureHandle texh = m_texturePool.Emplace(CreateTexture_(_width, _height, _depth, eTexture::Texture3D, _format, 1, eMSAA::None, _flags, _initDataOrEmpty));
     const TextureDesc&  td   = m_texturePool[texh];
-    JUG_CORE_LOG_TRACE("Texture3D created. handle = {}, {}x{}x{}, format = {}, mips = {}, flags = {:#x}", texh, td.width, td.height, td.depth, static_cast<uint32_t>(td.format), td.numMips, td.flags.GetFlags());
+    JUG_CORE_LOG_TRACE("Texture3D created. handle = {}, {}x{}x{}, format = {}, mips = {}, flags = {:#x}", texh, td.width, td.height, td.depth, ToString_(td.format), td.numMips, td.flags.GetFlags());
     return texh;
 }
 
@@ -1274,16 +1404,17 @@ TextureHandle Graphics::CreateTexture3D(
 //  Init
 // ===========================================
 
-void Graphics::InitDevice_(
-    const bool _bEnableDebugLayer)
+void Graphics::InitDevice_()
 {
+    bool bDebug = m_caps.flags.Has(eGraphicsOption::Debug);
+
+    // flags
     UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#ifdef JUG_DEBUG
-    if (_bEnableDebugLayer)
+    if (bDebug)
     {
         flags |= D3D11_CREATE_DEVICE_DEBUG;
     }
-#endif
+
     IAdapter*                       pAdapterOrNull = m_dxgi.GetAdapterOrNull();
     const ARRAY<D3D_DRIVER_TYPE, 4> driverTypes    = { D3D_DRIVER_TYPE_UNKNOWN, D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP, D3D_DRIVER_TYPE_REFERENCE };
 
@@ -1296,30 +1427,33 @@ void Graphics::InitDevice_(
         {
             break;
         }
-#ifdef JUG_DEBUG
-        if (_bEnableDebugLayer)
+
+        if (bDebug)
         {
             JUG_CORE_LOG_WARN("D3D11 debug layer is not available. Retrying without it. ({})", MakeErrorMessage_(hr));
             hr = CreateD3d11Device_(pAdapterOrNull, type, flags & ~D3D11_CREATE_DEVICE_DEBUG, &m_pD3d11Device, &m_d3dFeatureLevel, &m_pD3d11DeviceContext);
             if (SUCCEEDED(hr))
             {
+                bDebug = false;
                 break;
             }
         }
-#endif
-        JUG_CORE_LOG_WARN("Failed to create a D3D11 device with driver m_type {}. ({})", static_cast<uint32_t>(type), MakeErrorMessage_(hr));
+
+        JUG_CORE_LOG_WARN("Failed to create a D3D11 device with driver type '{}'. ({})", ToString_(type), MakeErrorMessage_(hr));
     }
 
+    // debug layer
+    m_caps.flags.Set(eGraphicsOption::Debug, bDebug);
+
+    // graphics driver
     if (i == driverTypes.size())
     {
-        JUG_FATAL("Failed to create a D3D11 device with any driver m_type.");
+        JUG_FATAL("Failed to create a D3D11 device with any driver type.");
     }
+    m_d3dDriverType = driverTypes[i];
 
-    m_d3dDriverType             = driverTypes[i];
-    m_caps.bDebugLayerEnabled   = (flags & D3D11_CREATE_DEVICE_DEBUG) != 0;
-    m_caps.bSoftwareRasterizer  = m_d3dDriverType == D3D_DRIVER_TYPE_WARP || m_d3dDriverType == D3D_DRIVER_TYPE_REFERENCE;
-    const uint32_t featureLevel = static_cast<uint32_t>(m_d3dFeatureLevel);
-    JUG_CORE_LOG_INFO("D3D11 device created. driverType = {}, featureLevel = {}.{}, debugLayer = {}, softwareRasterizer = {}", NameOf(m_d3dDriverType), (featureLevel >> 12) & 0xF, (featureLevel >> 8) & 0xF, m_caps.bDebugLayerEnabled, m_caps.bSoftwareRasterizer);
+    // is software rasterizer?
+    m_caps.bSoftwareRasterizer = m_d3dDriverType == D3D_DRIVER_TYPE_WARP || m_d3dDriverType == D3D_DRIVER_TYPE_REFERENCE;
 
     if (m_caps.bSoftwareRasterizer)
     {
@@ -1330,27 +1464,75 @@ void Graphics::InitDevice_(
         m_caps.sharedSystemMemorySize = 0;
     }
 
+    // name
     SetD3d11ObjectName_(m_pD3d11DeviceContext, "JugGfx.DirectX11.ImmediateContext");
+
+    // log
+    JUG_CORE_LOG_INFO("D3D11 device: feature level {}, driver {}{}, debug layer {}",
+                      ToString_(m_d3dFeatureLevel),
+                      ToString_(m_d3dDriverType),
+                      m_caps.bSoftwareRasterizer ? " (software rasterizer)" : "",
+                      bDebug ? "enabled" : "disabled");
 }
 
-void Graphics::InitDebugInterfacesIfNeed_()
+void Graphics::InitDebugInterfaces_()
 {
-    if (!m_caps.bDebugLayerEnabled)
+    JUG_DX_CHECK(m_pD3d11DeviceContext->QueryInterface(IID_PPV_ARGS(&m_pUserAnnotationOrNull)));
+    JUG_DX_CHECK(m_pD3d11Device->QueryInterface(IID_PPV_ARGS(&m_pD3d11DebugOrNull)));
+    JUG_DX_CHECK(m_pD3d11Device->QueryInterface(IID_PPV_ARGS(&m_pD3d11InfoQueueOrNull)));
+
+    if (m_pD3d11InfoQueueOrNull && ::IsDebuggerPresent())
+    {
+        JUG_DX_CHECK(m_pD3d11InfoQueueOrNull->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE));
+        JUG_DX_CHECK(m_pD3d11InfoQueueOrNull->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE));
+    }
+
+    JUG_CORE_LOG_INFO("D3D11 debug: annotation {}, debug {}, info queue {}, break on error {}",
+                      (m_pUserAnnotationOrNull != nullptr) ? "on" : "off",
+                      (m_pD3d11DebugOrNull != nullptr) ? "on" : "off",
+                      (m_pD3d11InfoQueueOrNull != nullptr) ? "on" : "off",
+                      (m_pD3d11InfoQueueOrNull != nullptr && ::IsDebuggerPresent() != FALSE) ? "on" : "off");
+}
+
+// ===========================================
+//  Diagnostics
+// ===========================================
+
+void Graphics::FlushDebugMessages_()
+{
+    if (!m_pD3d11InfoQueueOrNull)
     {
         return;
     }
 
-    JUG_DISCARD_RETURN(m_pD3d11DeviceContext->QueryInterface(IID_PPV_ARGS(&m_pUserAnnotationOrNull)));
-    JUG_DISCARD_RETURN(m_pD3d11Device->QueryInterface(IID_PPV_ARGS(&m_pD3d11DebugOrNull)));
-    JUG_DISCARD_RETURN(m_pD3d11Device->QueryInterface(IID_PPV_ARGS(&m_pD3d11InfoQueueOrNull)));
-
-    if (m_pD3d11InfoQueueOrNull && ::IsDebuggerPresent())
+    // 매 프레임 호출되므로 빈 큐면 바로 나간다.
+    const UINT64 numMsgs    = m_pD3d11InfoQueueOrNull->GetNumStoredMessagesAllowedByRetrievalFilter();
+    const UINT64 numDropped = m_pD3d11InfoQueueOrNull->GetNumMessagesDiscardedByMessageCountLimit();
+    if (numMsgs == 0 && numDropped == m_numDebugMsgsDropped)
     {
-        JUG_DISCARD_RETURN(m_pD3d11InfoQueueOrNull->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, TRUE));
-        JUG_DISCARD_RETURN(m_pD3d11InfoQueueOrNull->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, TRUE));
+        return;
     }
 
-    JUG_CORE_LOG_INFO("D3D11 debug interfaces: annotation = {}, debug = {}, infoQueue = {}, breakOnError = {}", m_pUserAnnotationOrNull != nullptr, m_pD3d11DebugOrNull != nullptr, m_pD3d11InfoQueueOrNull != nullptr, m_pD3d11InfoQueueOrNull != nullptr && ::IsDebuggerPresent() != FALSE);
+    alignas(D3D11_MESSAGE) ARRAY<std::byte, 4096> buf;
+    for (UINT64 i = 0; i < numMsgs; ++i)
+    {
+        size_t         size = buf.size();
+        D3D11_MESSAGE* pMsg = reinterpret_cast<D3D11_MESSAGE*>(buf.data());
+        if (FAILED(m_pD3d11InfoQueueOrNull->GetMessage(i, pMsg, &size)))
+        {
+            continue;
+        }
+
+        const StringView desc = { pMsg->pDescription, pMsg->DescriptionByteLength };
+        JUG_CORE_LOG(ToLogLevel_(pMsg->Severity), "D3D11 {} #{} (frame {}): {}", ToString_(pMsg->Category), static_cast<int>(pMsg->ID), m_frameIndex, desc);
+    }
+    m_pD3d11InfoQueueOrNull->ClearStoredMessages();
+
+    if (numDropped > m_numDebugMsgsDropped)
+    {
+        JUG_CORE_LOG_WARN("D3D11 debug layer dropped {} messages (queue limit {}).", numDropped - m_numDebugMsgsDropped, m_pD3d11InfoQueueOrNull->GetMessageCountLimit());
+    }
+    m_numDebugMsgsDropped = m_pD3d11InfoQueueOrNull->GetNumMessagesDiscardedByMessageCountLimit();
 }
 
 void Graphics::InitTimerQueries_()
@@ -1544,7 +1726,7 @@ Graphics::StorageBufferD3D11 Graphics::CreateStructuredBuffer_(
         srvd.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
         srvd.Buffer.FirstElement             = 0;
         srvd.Buffer.NumElements              = _numElements;
-        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(sb.pBuffer, &srvd, &sb.pSRV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(sb.pBuffer, &srvd, &sb.pSrvOrNull));
     }
 
     // create UAV
@@ -1555,7 +1737,7 @@ Graphics::StorageBufferD3D11 Graphics::CreateStructuredBuffer_(
         uavd.ViewDimension                    = D3D11_UAV_DIMENSION_BUFFER;
         uavd.Buffer.FirstElement              = 0;
         uavd.Buffer.NumElements               = _numElements;
-        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(sb.pBuffer, &uavd, &sb.pUAV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(sb.pBuffer, &uavd, &sb.pUavOrNull));
     }
 
     return sb;
@@ -1605,7 +1787,7 @@ Graphics::StorageBufferD3D11 Graphics::CreateIndirectArgsBuffer_(
         srvd.ViewDimension                   = D3D11_SRV_DIMENSION_BUFFER;
         srvd.Buffer.FirstElement             = 0;
         srvd.Buffer.NumElements              = numU32;
-        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(sb.pBuffer, &srvd, &sb.pSRV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(sb.pBuffer, &srvd, &sb.pSrvOrNull));
     }
 
     // create UAV
@@ -1617,7 +1799,7 @@ Graphics::StorageBufferD3D11 Graphics::CreateIndirectArgsBuffer_(
         uavd.Buffer.FirstElement              = 0;
         uavd.Buffer.NumElements               = numU32;
         uavd.Buffer.Flags                     = 0;
-        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(sb.pBuffer, &uavd, &sb.pUAV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(sb.pBuffer, &uavd, &sb.pUavOrNull));
     }
 
     return sb;
@@ -1750,19 +1932,18 @@ DXGI_SAMPLE_DESC Graphics::MakeSampleDesc_(const DXGI_FORMAT _format, const eMSA
 }
 
 Graphics::TextureD3D11 Graphics::CreateTexture_(
-    uint32_t               _width,
-    uint32_t               _height,
-    uint32_t               _depth,
-    eTexture               _type,
-    eTextureFormat         _format,
-    uint32_t               _numLayers,
-    eMSAA                  _msaa,
-    Flags<eTextureOption>  _flags,
-    Span<const MemoryView> _initData) const
+    uint32_t              _width,
+    uint32_t              _height,
+    uint32_t              _depth,
+    eTexture              _type,
+    eTextureFormat        _format,
+    uint32_t              _numLayers,
+    eMSAA                 _msaa,
+    Flags<eTextureOption> _flags,
+    MemoryView            _initDataOrEmpty) const
 {
     JUG_ASSERT(_width > 0 && _height > 0 && _depth > 0, "A texture must have a non-zero size.");
     JUG_ASSERT(_numLayers > 0, "A texture must have at least one layer.");
-    JUG_ASSERT(_format != eTextureFormat::Unknown, "A texture must have a known format.");
 
     const bool bDepth    = IsDepthFormat(_format);
     const bool bReadback = _flags.Has(eTextureOption::Readback);
@@ -1773,9 +1954,11 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
     JUG_ASSERT(b3D || _depth == 1, "Only a 3D texture can have a depth greater than 1.");
     JUG_ASSERT(!bDepth || !_flags.Has(eTextureOption::ShaderReadWrite), "A depth-stencil texture cannot be bound as an unordered access view.");
     JUG_ASSERT(!bReadback || _flags.GetFlags() == static_cast<uint32_t>(eTextureOption::Readback), "A readback texture cannot carry any other option.");
-    JUG_ASSERT(!bReadback || _initData.empty(), "A readback texture cannot be initialized with data.");
+    JUG_ASSERT(!bReadback || _initDataOrEmpty.IsEmpty(), "A readback texture cannot be initialized with data.");
     JUG_ASSERT(!bReadback || _msaa == eMSAA::None, "A readback texture cannot be multisampled.");
     JUG_ASSERT(!b3D || _msaa == eMSAA::None, "A 3D texture cannot be multisampled.");
+    JUG_ASSERT(!IsCompressedFormat(_format) || !_flags.Has(eTextureOption::RenderTarget) && !_flags.Has(eTextureOption::DepthStencil) && !_flags.Has(eTextureOption::ShaderReadWrite), "A block compressed texture cannot be a render target, depth-stencil or unordered access view.");
+    JUG_ASSERT(!IsCompressedFormat(_format) || _width % 4 == 0 && _height % 4 == 0, "A block compressed texture requires a width and height that are multiples of 4.");
 
     const TextureFormatInfo formatInfo = MakeTextureFormatInfo_(_format);
     DXGI_SAMPLE_DESC        sd         = MakeSampleDesc_(formatInfo.tex, _msaa);
@@ -1801,7 +1984,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
     }
 
     const bool bMSAA = texture.msaa != eMSAA::None;
-    JUG_ASSERT(!bMSAA || _initData.empty(), "An MSAA texture cannot be initialized with data.");
+    JUG_ASSERT(!bMSAA || _initDataOrEmpty.IsEmpty(), "An MSAA texture cannot be initialized with data.");
 
     // bind flags
     UINT bindFlags = 0;
@@ -1835,7 +2018,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
     }
 
     constexpr UINT kWritableBinds = D3D11_BIND_RENDER_TARGET | D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_UNORDERED_ACCESS;
-    texture.bImmutable            = !_initData.empty() && (bindFlags & kWritableBinds) == 0 && (miscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS) == 0;
+    texture.bImmutable            = !_initDataOrEmpty.IsEmpty() && (bindFlags & kWritableBinds) == 0 && (miscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS) == 0;
 
     if (bReadback)
     {
@@ -1849,38 +2032,31 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
                                                           : D3D11_USAGE_DEFAULT;
 
     // init data
-    D3D11_SUBRESOURCE_DATA* pInitData = nullptr;
-    if (!_initData.empty())
+    D3D11_SUBRESOURCE_DATA* pInitDataOrNull = nullptr;
+    if (!_initDataOrEmpty.IsEmpty())
     {
-        const uint32_t bpp     = GetBitPerPixel(_format);
         const uint32_t numSubs = texture.numMips * texture.numLayers;
-        JUG_ASSERT(_initData.size() == numSubs, "Initial data size does not match the number of mips and layers.");
+        pInitDataOrNull        = static_cast<D3D11_SUBRESOURCE_DATA*>(JUG_STACK_ALLOC(sizeof(D3D11_SUBRESOURCE_DATA) * numSubs));
 
-        pInitData = static_cast<D3D11_SUBRESOURCE_DATA*>(JUG_STACK_ALLOC(sizeof(D3D11_SUBRESOURCE_DATA) * numSubs));
+        // [layer][mip] 연속 배치
+        const std::byte* pBase  = _initDataOrEmpty.GetPtr();
+        size_t           offset = 0;
         for (uint32_t layer = 0; layer < texture.numLayers; ++layer)
         {
             for (uint32_t mip = 0; mip < texture.numMips; ++mip)
             {
                 const uint32_t index      = mip + layer * texture.numMips;
-                const uint32_t w          = Max(1u, _width >> mip);
-                const uint32_t h          = Max(1u, _height >> mip);
-                const uint32_t d          = Max(1u, _depth >> mip);
-                const uint32_t rowPitch   = (w * bpp + 7) / 8;
-                const uint32_t slicePitch = rowPitch * h;
-                const uint32_t byteWidth  = slicePitch * d;
-                const uint32_t size       = static_cast<uint32_t>(_initData[index].GetSize());
+                const VEC3U    size       = CalcTextureSize(_width, _height, _depth, mip);
+                const uint32_t rowPitch   = CalcRowPitch(_format, size.x);
+                const uint32_t slicePitch = CalcSlicePitch(_format, size.x, size.y);
 
-                JUG_ASSERT(size >= byteWidth, "Initial data size does not match the expected size for mip {} layer {}.", mip, layer);
-                if (size > byteWidth)
-                {
-                    JUG_CORE_LOG_WARN("Initial data size is larger than the expected size for mip {} layer {}. Extra data will be ignored.", mip, layer);
-                }
-
-                pInitData[index].pSysMem          = _initData[index].GetPtr();
-                pInitData[index].SysMemPitch      = rowPitch;
-                pInitData[index].SysMemSlicePitch = slicePitch;
+                pInitDataOrNull[index].pSysMem          = pBase + offset;
+                pInitDataOrNull[index].SysMemPitch      = rowPitch;
+                pInitDataOrNull[index].SysMemSlicePitch = slicePitch;
+                offset += static_cast<size_t>(slicePitch) * size.z;
             }
         }
+        JUG_ASSERT(_initDataOrEmpty.GetSize() == offset, "Initial data size ({}) does not match the expected size ({}) for {} layers and {} mips.", _initDataOrEmpty.GetSize(), offset, texture.numLayers, texture.numMips);
     }
 
     // d3d11 texture
@@ -1902,7 +2078,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
             texd.CPUAccessFlags       = cpuAccessFlags;
             texd.MiscFlags            = miscFlags;
 
-            JUG_DX_CHECK(m_pD3d11Device->CreateTexture2D(&texd, pInitData, &texture.pTexture2D));
+            JUG_DX_CHECK(m_pD3d11Device->CreateTexture2D(&texd, pInitDataOrNull, &texture.pTexture2D));
 
             if (bMSAA)
             {
@@ -1919,7 +2095,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
                 msaad.MiscFlags            = miscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE;
 
                 JUG_ASSERT(msaad.BindFlags != 0, "An MSAA texture must be a render target or a depth-stencil.");
-                JUG_DX_CHECK(m_pD3d11Device->CreateTexture2D(&msaad, nullptr, &texture.pMsaaRtTexture2D));
+                JUG_DX_CHECK(m_pD3d11Device->CreateTexture2D(&msaad, nullptr, &texture.pMsaaRtTexture2DOrNull));
             }
         }
         break;
@@ -1937,7 +2113,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
             texd.CPUAccessFlags       = cpuAccessFlags;
             texd.MiscFlags            = miscFlags;
 
-            JUG_DX_CHECK(m_pD3d11Device->CreateTexture3D(&texd, pInitData, &texture.pTexture3D));
+            JUG_DX_CHECK(m_pD3d11Device->CreateTexture3D(&texd, pInitDataOrNull, &texture.pTexture3D));
         }
         break;
 
@@ -1993,7 +2169,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
                 break;
         }
 
-        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(texture.pResource, &srvd, &texture.pSRV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateShaderResourceView(texture.pResource, &srvd, &texture.pSrvOrNull));
     }
 
     // unordered access view
@@ -2017,7 +2193,7 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
             uavd.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
         }
 
-        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(texture.pResource, &uavd, &texture.pUAV));
+        JUG_DX_CHECK(m_pD3d11Device->CreateUnorderedAccessView(texture.pResource, &uavd, &texture.pUavOrNull));
     }
 
     return texture;
@@ -2040,15 +2216,14 @@ void Graphics::UpdateTexture_(
     JUG_ASSERT(_mip < tex.numMips, "Invalid mip level {} for texture with {} mips.", _mip, tex.numMips);
     JUG_ASSERT(_layer < tex.numLayers, "Invalid layer {} for texture with {} layers.", _layer, tex.numLayers);
 
-    const VECTOR3U size = CalcTextureSize(tex.width, tex.height, tex.depth, _mip);
+    const VEC3U size = CalcTextureSize(tex.width, tex.height, tex.depth, _mip);
     JUG_ASSERT(_offsetX + _width <= size.width, "UpdateTexture width exceeds the mip {} size {}.", _mip, size.width);
     JUG_ASSERT(_offsetY + _height <= size.height, "UpdateTexture height exceeds the mip {} size {}.", _mip, size.height);
     JUG_ASSERT(_offsetZ + _depth <= size.depth, "UpdateTexture depth exceeds the mip {} size {}.", _mip, size.depth);
 
     const uint32_t index      = CalcTextureIndex(_mip, _layer, tex.numMips);
-    const uint32_t bpp        = GetBitPerPixel(tex.format);
-    const uint32_t rowPitch   = (_width * bpp + 7) / 8;
-    const uint32_t slicePitch = rowPitch * _height;
+    const uint32_t rowPitch   = CalcRowPitch(tex.format, _width);
+    const uint32_t slicePitch = CalcSlicePitch(tex.format, _width, _height);
     const uint32_t byteWidth  = slicePitch * _depth;
     JUG_ASSERT(_data.GetSize() == byteWidth, "UpdateTexture data size does not match the expected size for mip {} layer {}.", _mip, _layer);
 
@@ -2140,28 +2315,29 @@ void Graphics::CopyTexture(
     const uint32_t      _srcX,
     const uint32_t      _srcY,
     const uint32_t      _srcZ,
-    const uint32_t      _widthOrZero,
-    const uint32_t      _heightOrZero,
-    const uint32_t      _depthOrZero)
+    const uint32_t      _widthOrInvalid,
+    const uint32_t      _heightOrInvalid,
+    const uint32_t      _depthOrInvalid)
 {
     const TextureD3D11& dst = m_texturePool[_dstTexh];
     const TextureD3D11& src = m_texturePool[_srcTexh];
 
     const uint32_t dstIndex = CalcTextureIndex(_dstMip, _dstLayer, dst.numMips);
     const uint32_t srcIndex = CalcTextureIndex(_srcMip, _srcLayer, src.numMips);
-    const VECTOR3U dstSize  = CalcTextureSize(dst.width, dst.height, dst.depth, _dstMip);
-    const VECTOR3U srcSize  = CalcTextureSize(src.width, src.height, src.depth, _srcMip);
+    const VEC3U    dstSize  = CalcTextureSize(dst.width, dst.height, dst.depth, _dstMip);
+    const VEC3U    srcSize  = CalcTextureSize(src.width, src.height, src.depth, _srcMip);
 
     JUG_ASSERT(!dst.bImmutable, "An immutable texture cannot be a copy destination.");
     JUG_ASSERT(_dstMip < dst.numMips && _dstLayer < dst.numLayers, "Texture copy destination subresource is out of range.");
     JUG_ASSERT(_srcMip < src.numMips && _srcLayer < src.numLayers, "Texture copy source subresource is out of range.");
     JUG_ASSERT(dst.pResource != src.pResource || dstIndex != srcIndex, "A texture cannot be copied onto itself.");
     JUG_ASSERT(MakeTextureFormatInfo_(dst.format).tex == MakeTextureFormatInfo_(src.format).tex, "A texture copy requires both textures to share the same typeless format.");
-    JUG_ASSERT(_srcX < dstSize.width && _srcY < srcSize.height && _srcZ < srcSize.depth, "Texture copy source offset is out of bounds.");
+    JUG_ASSERT(_srcX < srcSize.width && _srcY < srcSize.height && _srcZ < srcSize.depth, "Texture copy source offset is out of bounds.");
+    JUG_ASSERT(_dstX < dstSize.width && _dstY < dstSize.height && _dstZ < dstSize.depth, "Texture copy destination offset is out of bounds.");
 
-    const uint32_t width  = _widthOrZero == 0 ? srcSize.width - _srcX : _widthOrZero;
-    const uint32_t height = _heightOrZero == 0 ? srcSize.height - _srcY : _heightOrZero;
-    const uint32_t depth  = _depthOrZero == 0 ? srcSize.depth - _srcZ : _depthOrZero;
+    const uint32_t width  = _widthOrInvalid == kInvalidIndex ? srcSize.width - _srcX : _widthOrInvalid;
+    const uint32_t height = _heightOrInvalid == kInvalidIndex ? srcSize.height - _srcY : _heightOrInvalid;
+    const uint32_t depth  = _depthOrInvalid == kInvalidIndex ? srcSize.depth - _srcZ : _depthOrInvalid;
 
     JUG_ASSERT(_srcX + width <= srcSize.width && _srcY + height <= srcSize.height && _srcZ + depth <= srcSize.depth, "Texture copy source range is out of bounds.");
     JUG_ASSERT(_dstX + width <= dstSize.width && _dstY + height <= dstSize.height && _dstZ + depth <= dstSize.depth, "Texture copy destination range is out of bounds.");
@@ -2192,10 +2368,10 @@ size_t Graphics::ReadTexture(
     JUG_ASSERT(_mip < texture.numMips && _layer < texture.numLayers, "Texture subresource is out of range.");
 
     const uint32_t index      = CalcTextureIndex(_mip, _layer, texture.numMips);
-    const uint32_t bpp        = GetBitPerPixel(texture.format);
-    const VECTOR3U size       = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
-    const uint32_t rowPitch   = (size.width * bpp + 7) / 8;
-    const uint32_t slicePitch = rowPitch * size.height;
+    const VEC3U    size       = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
+    const uint32_t rowPitch   = CalcRowPitch(texture.format, size.width);
+    const uint32_t numRows    = CalcNumRows(texture.format, size.height);   // compressed 면 블록 줄 수
+    const uint32_t slicePitch = rowPitch * numRows;
     const uint32_t byteWidth  = slicePitch * size.depth;
     const uint32_t read       = Min(static_cast<uint32_t>(_dst.GetSize()), byteWidth);
 
@@ -2208,7 +2384,7 @@ size_t Graphics::ReadTexture(
     uint32_t written = 0;
     for (uint32_t z = 0; z < size.depth && written < read; ++z)
     {
-        for (uint32_t y = 0; y < size.height && written < read; ++y)
+        for (uint32_t y = 0; y < numRows && written < read; ++y)
         {
             const std::byte* pSrc = pSrcBase + z * mapped.DepthPitch + y * mapped.RowPitch;
             const uint32_t   copy = Min(rowPitch, read - written);
@@ -2249,8 +2425,8 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
         }
 
         // MSAA 텍스처는 멀티샘플 표면에 그리고 나중에 단일 샘플 쪽으로 리졸브한다.
-        const bool              bMSAA      = texture.pMsaaRtResource != nullptr;
-        ID3D11Resource* const   pResource  = bMSAA ? texture.pMsaaRtResource : texture.pResource;
+        const bool              bMSAA      = texture.pMsaaRtResourceOrNull != nullptr;
+        ID3D11Resource* const   pResource  = bMSAA ? texture.pMsaaRtResourceOrNull : texture.pResource;
         const TextureFormatInfo formatInfo = MakeTextureFormatInfo_(texture.format);
         const bool              bArray     = texture.type != eTexture::Texture3D && (texture.numLayers > 1 || att.numLayers > 1);
 
@@ -2281,7 +2457,7 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
                 dsvd.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
                 dsvd.Texture2D.MipSlice = att.mip;
             }
-            JUG_DX_CHECK(m_pD3d11Device->CreateDepthStencilView(pResource, &dsvd, &fb.pDSV));
+            JUG_DX_CHECK(m_pD3d11Device->CreateDepthStencilView(pResource, &dsvd, &fb.pDsvOrNull));
 
             // 깊이는 컬러 뒤 슬롯에 놓는다. 컬러 개수가 확정된 뒤에 써야 하므로 여기서는 들고만 있는다.
             depthAtt     = att;
@@ -2342,10 +2518,10 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
 {
     JUG_ASSERT(_texh, "A frame buffer requires a valid texture handle.");
 
-    const ARRAY<Attachment, 1> atts {
+    const ARRAY<Attachment, 1> atts = {
         Attachment { _texh, 0, 0, m_texturePool[_texh].numLayers }
     };
-    return CreateFrameBuffer(Span<const Attachment> { atts }, _bOwnership);
+    return CreateFrameBuffer(atts, _bOwnership);
 }
 
 FrameBufferHandle Graphics::CreateFrameBuffer(
@@ -2364,7 +2540,7 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
     DXGI_SWAP_CHAIN_DESC1 scd = {};
     scd.Width                 = _width;
     scd.Height                = _height;
-    scd.Format                = MakeTextureFormatInfo_(ToNonSRGB(_format)).srv;
+    scd.Format                = MakeTextureFormatInfo_(ToLinearFormat(_format)).srv;
     scd.Stereo                = FALSE;
     scd.SampleDesc.Count      = 1;
     scd.SampleDesc.Quality    = 0;
@@ -2405,7 +2581,7 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
     fb.bMSAA            = false;
     fb.wndID            = _wndID;
     fb.numBuffers       = _numBuffers;
-    fb.pSwapChain       = pSwapChain;
+    fb.pSwapChainOrNull = pSwapChain;
     fb.bVSync           = true;
 
     // create rtv
@@ -2418,14 +2594,14 @@ FrameBufferHandle Graphics::CreateFrameBuffer(
     const FrameBufferHandle fbh = m_frameBufferPool.Emplace(fb);
     m_swapChainFbhs.push_back(fbh);
 
-    JUG_CORE_LOG_INFO("Swap chain frame buffer created. handle = {}, {}x{}, format = {}, buffers = {}, tearing = {}", fbh, _width, _height, static_cast<uint32_t>(_format), _numBuffers, m_caps.bAllowTearing);
+    JUG_CORE_LOG_INFO("Swap chain frame buffer created. handle = {}, {}x{}, format = {}, buffers = {}, tearing = {}", fbh, _width, _height, ToString_(_format), _numBuffers, m_caps.bAllowTearing);
     return fbh;
 }
 
-FrameBufferHandle Graphics::FindFrameBufferOrNull(
+FrameBufferHandle Graphics::FindFrameBufferOrInvalid(
     const SDL_WindowID _wndID)
 {
-    JUG_ASSERT(_wndID != 0, "FindFrameBufferOrNull requires a valid window ID.");
+    JUG_ASSERT(_wndID != 0, "FindFrameBufferOrInvalid requires a valid window ID.");
 
     for (const FrameBufferHandle fbh: m_swapChainFbhs)
     {
@@ -2435,7 +2611,7 @@ FrameBufferHandle Graphics::FindFrameBufferOrNull(
             return fbh;
         }
     }
-    return kNullHandle;
+    return kInvalidHandle;
 }
 
 void Graphics::ResizeFrameBuffer(
@@ -2444,7 +2620,7 @@ void Graphics::ResizeFrameBuffer(
     const uint32_t          _height)
 {
     FrameBufferD3D11& fb = m_frameBufferPool[_swapChainFbh];
-    JUG_ASSERT(fb.pSwapChain, "ResizeFrameBuffer requires a window frame buffer.");
+    JUG_ASSERT(fb.pSwapChainOrNull, "ResizeFrameBuffer requires a window frame buffer.");
 
     // 윈도우 최소화는 무시
     if (_width == 0 || _height == 0)
@@ -2461,8 +2637,8 @@ void Graphics::ResizeFrameBuffer(
 
     // 컨텍스트가 프레임버퍼를 바인딩하고 있으면 리사이즈가 안됨
     m_pD3d11DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
-    m_fbh     = kNullHandle;
-    m_lastFbh = kNullHandle;
+    m_fbhOrInvalid     = kInvalidHandle;
+    m_lastFbhOrInvalid = kInvalidHandle;
 
     // 리소스 해제. resize 시 DXGI_ERROR_DEVICE_REMOVED 가 날 수 있으므로 Release() 실패 시 assert.
     JUG_DX_RELEASE(fb.rtvs[0]);
@@ -2477,11 +2653,11 @@ void Graphics::ResizeFrameBuffer(
 
     // 리사이즈
     const UINT dxgiFlags = m_caps.bAllowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u;
-    JUG_DX_CHECK(fb.pSwapChain->ResizeBuffers(0, _width, _height, DXGI_FORMAT_UNKNOWN, dxgiFlags));
+    JUG_DX_CHECK(fb.pSwapChainOrNull->ResizeBuffers(0, _width, _height, DXGI_FORMAT_UNKNOWN, dxgiFlags));
 
     texture.width  = _width;
     texture.height = _height;
-    JUG_DX_CHECK(fb.pSwapChain->GetBuffer(0, IID_PPV_ARGS(&texture.pTexture2D)));
+    JUG_DX_CHECK(fb.pSwapChainOrNull->GetBuffer(0, IID_PPV_ARGS(&texture.pTexture2D)));
 
     D3D11_RENDER_TARGET_VIEW_DESC rtvd = {};
     rtvd.Format                        = MakeTextureFormatInfo_(texture.format).rtv;
@@ -2498,7 +2674,7 @@ void Graphics::SetVSync(
     const bool              _bVSync)
 {
     FrameBufferD3D11& fb = m_frameBufferPool[_swapChainFbh];
-    JUG_ASSERT(fb.pSwapChain, "SetVSync requires a window frame buffer.");
+    JUG_ASSERT(fb.pSwapChainOrNull, "SetVSync requires a window frame buffer.");
     fb.bVSync = _bVSync;
 
     JUG_CORE_LOG_TRACE("Swap chain vsync changed. handle = {}, vsync = {}", _swapChainFbh, _bVSync);
@@ -2513,54 +2689,74 @@ void Graphics::Frame()
     // present
     for (const FrameBufferHandle fbh: m_swapChainFbhs)
     {
-        const FrameBufferD3D11& fb       = m_frameBufferPool[fbh];
-        const UINT              interval = fb.bVSync ? 1 : 0;
-        const UINT              flags    = m_caps.bAllowTearing && !fb.bVSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
-        JUG_DX_CHECK(fb.pSwapChain->Present(interval, flags));
+        const FrameBufferD3D11& fb = m_frameBufferPool[fbh];
+        if (fb.bVSync)
+        {
+            JUG_DX_CHECK(fb.pSwapChainOrNull->Present(1, 0));
+        }
+        else
+        {
+            JUG_DX_CHECK(fb.pSwapChainOrNull->Present(0, m_caps.bAllowTearing ? DXGI_PRESENT_ALLOW_TEARING : 0));
+        }
     }
 
     // timer query.
+    if (m_flags & eGraphicsOption::ProfileFrameTime)
     {
         // 가장 최근 쿼리 종료
         TimerQuery& last = m_timerQueries.Back();
-        if (last.bIssued)
+        if (last.bIssued && !last.bEnded)
         {
             m_pD3d11DeviceContext->End(last.pEnd);
             m_pD3d11DeviceContext->End(last.pDisjoint);
+            last.bEnded = true;
         }
 
         // 가장 오래된 쿼리 결과 가져오기.
-        TimerQuery pop = m_timerQueries.Front();
-        m_timerQueries.PopFront();
-
-        if (pop.bIssued)
+        TimerQuery& front = m_timerQueries.Front();
+        if (front.bIssued)
         {
             D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
-            if (m_pD3d11DeviceContext->GetData(pop.pDisjoint, &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK && !disjoint.Disjoint)
+            UINT64                              begin;
+            UINT64                              end;
+            if (m_pD3d11DeviceContext->GetData(front.pDisjoint, &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK
+                && m_pD3d11DeviceContext->GetData(front.pBegin, &begin, sizeof(begin), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK
+                && m_pD3d11DeviceContext->GetData(front.pEnd, &end, sizeof(end), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK)
             {
-                UINT64 begin;
-                UINT64 end;
-                if (m_pD3d11DeviceContext->GetData(pop.pBegin, &begin, sizeof(begin), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK
-                    && m_pD3d11DeviceContext->GetData(pop.pEnd, &end, sizeof(end), D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_OK)
+                if (!disjoint.Disjoint)   // 조회 성공
                 {
                     m_stats.gpuTimerBegin   = begin;
                     m_stats.gpuTimerEnd     = end;
                     m_stats.gpuTimerFreq    = disjoint.Frequency;
-                    m_stats.gpuTimerLatency = m_frameIndex - pop.frameIndex;
+                    m_stats.gpuTimerLatency = m_frameIndex - front.frameIndex;
                 }
+                front.bIssued = false;
             }
         }
+        else
+        {
+            TimerQuery next = front;
+            m_timerQueries.PopFront();
 
-        // 다음 쿼리 시작
-        m_pD3d11DeviceContext->Begin(pop.pDisjoint);
-        m_pD3d11DeviceContext->End(pop.pBegin);
-        pop.frameIndex = m_frameIndex;
-        pop.bIssued    = true;
-        m_timerQueries.PushBack(pop);
+            m_pD3d11DeviceContext->Begin(next.pDisjoint);
+            m_pD3d11DeviceContext->End(next.pBegin);
+            next.frameIndex = m_frameIndex;
+            next.bIssued    = true;
+            next.bEnded     = false;
+            m_timerQueries.PushBack(next);
+        }
+    }
+    else
+    {
+
+        m_stats.gpuTimerBegin   = 0;
+        m_stats.gpuTimerEnd     = 0;
+        m_stats.gpuTimerFreq    = 0;
+        m_stats.gpuTimerLatency = 0;
     }
 
     // GPU 메모리 사용량 갱신
-    if (m_caps.videoMemorySize > 0 && m_dxgi.GetAdapterOrNull())
+    if (m_caps.flags & eGraphicsOption::ProfileGpuMemory && m_dxgi.GetAdapterOrNull())
     {
         DXGI_QUERY_VIDEO_MEMORY_INFO vmi;
         if (SUCCEEDED(m_dxgi.GetAdapterOrNull()->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &vmi)))
@@ -2570,8 +2766,10 @@ void Graphics::Frame()
         }
     }
 
-    ++m_frameIndex;
+    // 이번 프레임에 쌓인 디버그 메시지를 출력
+    FlushDebugMessages_();
 
+    ++m_frameIndex;
     m_lastStats = m_stats;
     m_stats     = {};
 }
@@ -2587,7 +2785,7 @@ void Graphics::ClearRenderTarget(
 {
     const FrameBufferD3D11& fb = m_frameBufferPool[_fbh];
     JUG_ASSERT(_slot < fb.numRts, "Render target slot is out of range.");
-    const VECTOR4 color = _color.ToLinear();
+    const VEC4 color = _color.ToLinear();
     m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[_slot], color.GetPtr());
 }
 
@@ -2596,7 +2794,7 @@ void Graphics::ClearRenderTargets(
     const RGBA              _color)
 {
     const FrameBufferD3D11& fb    = m_frameBufferPool[_fbh];
-    const VECTOR4           color = _color.ToLinear();
+    const VEC4              color = _color.ToLinear();
     for (uint32_t i = 0; i < fb.numRts; ++i)
     {
         m_pD3d11DeviceContext->ClearRenderTargetView(fb.rtvs[i], color.GetPtr());
@@ -2616,7 +2814,7 @@ void Graphics::ClearDepthStencil(
     }
 
     const FrameBufferD3D11& fb = m_frameBufferPool[_fbh];
-    JUG_ASSERT(fb.pDSV, "The frame buffer has no depth stencil attachment.");
+    JUG_ASSERT(fb.pDsvOrNull, "The frame buffer has no depth stencil attachment.");
 
     UINT flags = 0;
     if (_bClearDepth)
@@ -2627,14 +2825,14 @@ void Graphics::ClearDepthStencil(
     {
         flags |= D3D11_CLEAR_STENCIL;
     }
-    m_pD3d11DeviceContext->ClearDepthStencilView(fb.pDSV, flags, _depth, _stencil);
+    m_pD3d11DeviceContext->ClearDepthStencilView(fb.pDsvOrNull, flags, _depth, _stencil);
 }
 
 // ===========================================
 //  Input Layout
 // ===========================================
 
-ID3D11InputLayout* Graphics::GetOrCreateD3d11InputLayout_()
+ID3D11InputLayout* Graphics::GetOrCreateD3d11InputLayoutOrNull_()
 {
     if (m_numStreams == 0)
     {
@@ -2679,13 +2877,13 @@ ID3D11InputLayout* Graphics::GetOrCreateD3d11InputLayout_()
     String hlsl = "struct VSInput {";
     for (uint32_t slot = 0; slot < m_numStreams; ++slot)
     {
-        const VertexLayoutHandle vlh = m_vlhs[slot];
-        if (!vlh)
+        const VertexLayoutHandle vlhOrInvalid = m_vlhs[slot];
+        if (!vlhOrInvalid)
         {
             continue;
         }
 
-        for (const VertexAttribute& attrib: m_vertexLayoutPool[vlh].vl.GetAttributes())
+        for (const VertexAttribute& attrib: m_vertexLayoutPool[vlhOrInvalid].vl.GetAttributes())
         {
             const VertexSemantic semantic = ToVertexSemantic_(attrib.attrib);
 
@@ -2720,12 +2918,12 @@ ID3D11InputLayout* Graphics::GetOrCreateD3d11InputLayout_()
     JUG_ASSERT(index == numElems, "Input element count does not match the counted size.");
     hlsl += "}; void VSMain(in VSInput _input) {}";
 
-    ShaderCompileDesc compileDesc = {};
-    compileDesc.type              = eShader::Vertex;
-    compileDesc.entryPoint        = "VSMain";
-    const Result<Shader> shader   = Shader::Compile(hlsl, compileDesc);
+    ShaderCompileConfig compileConfig = {};
+    compileConfig.type                = eShader::Vertex;
+    compileConfig.entryPoint          = "VSMain";
+    const Result<ShaderBytecode> shader = CompileShader(hlsl, compileConfig);
     JUG_ASSERT(shader, "Failed to compile the dummy vertex shader for an input layout.");
-    const MemoryView bytecode = shader->GetByteCode();
+    const MemoryView bytecode = shader->GetBytecode();
 
     ID3D11InputLayout* pInputLayout;
     JUG_DX_CHECK(m_pD3d11Device->CreateInputLayout(pIed, numElems, bytecode.GetPtr(), bytecode.GetSize(), &pInputLayout));
@@ -2806,7 +3004,7 @@ ShaderHandle Graphics::CreateShader(
 
     const ShaderHandle sh = m_shaderPool.Emplace(shader);
     m_shaderCache[hash]   = sh;
-    JUG_CORE_LOG_TRACE("Shader created. handle = {}, stage = {}, bytes = {}, hash = {:#x}", sh, static_cast<uint32_t>(stage), _bytecode.GetSize(), hash);
+    JUG_CORE_LOG_TRACE("Shader created. handle = {}, stage = {}, bytes = {}, hash = {:#x}", sh, ToString_(stage), _bytecode.GetSize(), hash);
     return sh;
 }
 
@@ -2826,9 +3024,9 @@ ProgramHandle Graphics::CreateProgram(
     }
 
     ProgramDesc prog = {};
-    prog.vsh         = _vsh;
-    prog.psh         = _psh;
-    prog.csh         = kNullHandle;
+    prog.vshOrInvalid   = _vsh;
+    prog.pshOrInvalid   = _psh;
+    prog.cshOrInvalid   = kInvalidHandle;
 
     const ProgramHandle ph = m_programPool.Emplace(prog);
     JUG_CORE_LOG_TRACE("Program created. handle = {}, vsh = {}, psh = {}, ownership = {}", ph, _vsh, _psh, _bOwnership);
@@ -2848,9 +3046,9 @@ ProgramHandle Graphics::CreateComputeProgram(
     }
 
     ProgramDesc prog = {};
-    prog.vsh         = kNullHandle;
-    prog.psh         = kNullHandle;
-    prog.csh         = _csh;
+    prog.vshOrInvalid   = kInvalidHandle;
+    prog.pshOrInvalid   = kInvalidHandle;
+    prog.cshOrInvalid   = _csh;
 
     const ProgramHandle ph = m_programPool.Emplace(prog);
 
@@ -2871,8 +3069,8 @@ void Graphics::Destroy(
     {
         if (m_vbhs[i] == _vbh)
         {
-            m_vbhs[i]               = kNullHandle;
-            m_vlhs[i]               = kNullHandle;
+            m_vbhs[i]               = kInvalidHandle;
+            m_vlhs[i]               = kInvalidHandle;
             m_d3d11VertexBuffers[i] = nullptr;
             m_vertexStrides[i]      = 0;
             m_vertexOffsets[i]      = 0;
@@ -2894,13 +3092,13 @@ void Graphics::Destroy(
 void Graphics::Destroy(
     const InstanceBufferHandle _instbh)
 {
-    if (m_instbh == _instbh)
+    if (m_instbhOrInvalid == _instbh)
     {
-        m_instbh               = kNullHandle;
-        m_pD3d11InstanceBuffer = nullptr;
-        m_instanceDataStride   = 0;
-        m_instanceOffset       = 0;
-        m_numInstances         = 0;
+        m_instbhOrInvalid               = kInvalidHandle;
+        m_pD3d11InstanceBufferOrNull = nullptr;
+        m_instanceDataStride         = 0;
+        m_instanceOffset             = 0;
+        m_numInstances               = 0;
         m_dirtyFlags |= { ePipelineDirty::InstanceBuffer, ePipelineDirty::InputLayout };
     }
 
@@ -2911,13 +3109,13 @@ void Graphics::Destroy(
 void Graphics::Destroy(
     const IndexBufferHandle _ibh)
 {
-    if (m_ibh == _ibh)
+    if (m_ibhOrInvalid == _ibh)
     {
-        m_ibh               = kNullHandle;
-        m_pD3d11IndexBuffer = nullptr;
-        m_dxgiIndexFormat   = DXGI_FORMAT_UNKNOWN;
-        m_indexOffset       = 0;
-        m_numIndices        = 0;
+        m_ibhOrInvalid               = kInvalidHandle;
+        m_pD3d11IndexBufferOrNull = nullptr;
+        m_dxgiIndexFormat         = DXGI_FORMAT_UNKNOWN;
+        m_indexOffset             = 0;
+        m_numIndices              = 0;
         m_dirtyFlags |= ePipelineDirty::IndexBuffer;
     }
 
@@ -2935,7 +3133,7 @@ void Graphics::Destroy(
         {
             if (bind.resources[slot] == _cbh)
             {
-                bind.resources[slot]      = kNullHandle;
+                bind.resources[slot]      = kInvalidHandle;
                 bind.d3d11Resources[slot] = nullptr;
                 bind.MarkDirty(slot);
                 m_dirtyFlags |= ePipelineDirty::ConstantBuffer;
@@ -2982,8 +3180,8 @@ void Graphics::Destroy(
         }
     }
 
-    JUG_DX_RELEASE(sb.pSRV);
-    JUG_DX_RELEASE(sb.pUAV);
+    JUG_DX_RELEASE(sb.pSrvOrNull);
+    JUG_DX_RELEASE(sb.pUavOrNull);
     JUG_DX_RELEASE(sb.pBuffer);
     m_storageBufferPool.Erase(_sbh);
 }
@@ -3028,9 +3226,9 @@ void Graphics::Destroy(
         }
     }
 
-    JUG_DX_RELEASE(texture.pSRV);
-    JUG_DX_RELEASE(texture.pUAV);
-    JUG_DX_RELEASE(texture.pMsaaRtResource);
+    JUG_DX_RELEASE(texture.pSrvOrNull);
+    JUG_DX_RELEASE(texture.pUavOrNull);
+    JUG_DX_RELEASE(texture.pMsaaRtResourceOrNull);
     JUG_DX_RELEASE(texture.pResource);
     m_texturePool.Erase(_texh);
 }
@@ -3040,30 +3238,30 @@ void Graphics::Destroy(
 {
     FrameBufferD3D11& fb = m_frameBufferPool[_fbh];
 
-    if (fb.pSwapChain)
+    if (fb.pSwapChainOrNull)
     {
         // fullscreen 해제. 아니면 Destroy() 시 DXGI_ERROR_DEVICE_REMOVED 날 수 있음
-        JUG_DISCARD_RETURN(fb.pSwapChain->SetFullscreenState(FALSE, nullptr));
+        JUG_DX_CHECK(fb.pSwapChainOrNull->SetFullscreenState(FALSE, nullptr));
         std::erase(m_swapChainFbhs, _fbh);
     }
 
     // frame buffer 해제
-    if (m_fbh == _fbh)
+    if (m_fbhOrInvalid == _fbh)
     {
-        m_fbh = kNullHandle;
+        m_fbhOrInvalid = kInvalidHandle;
         m_dirtyFlags |= ePipelineDirty::FrameBuffer;
     }
 
-    if (m_lastFbh == _fbh)
+    if (m_lastFbhOrInvalid == _fbh)
     {
-        m_lastFbh = kNullHandle;
+        m_lastFbhOrInvalid = kInvalidHandle;
     }
 
     for (ID3D11RenderTargetView*& pRTV: fb.rtvs)
     {
         JUG_DX_RELEASE(pRTV);
     }
-    JUG_DX_RELEASE(fb.pDSV);
+    JUG_DX_RELEASE(fb.pDsvOrNull);
 
     const uint32_t numAtts = fb.numRts + (fb.bHasDepth ? 1 : 0);
     for (uint32_t i = 0; i < numAtts; ++i)
@@ -3072,7 +3270,7 @@ void Graphics::Destroy(
     }
 
     // swap chain은 가장 마지막에 해제.
-    JUG_DX_RELEASE(fb.pSwapChain);
+    JUG_DX_RELEASE(fb.pSwapChainOrNull);
     m_frameBufferPool.Erase(_fbh);
 }
 
@@ -3098,29 +3296,29 @@ void Graphics::Destroy(
 {
     const ProgramDesc& prog = m_programPool[_ph];
 
-    if (m_ph == _ph)
+    if (m_phOrInvalid == _ph)
     {
-        m_ph = kNullHandle;
+        m_phOrInvalid = kInvalidHandle;
         m_dirtyFlags |= { ePipelineDirty::Program, ePipelineDirty::InputLayout };
     }
 
-    if (m_computePh == _ph)
+    if (m_computePhOrInvalid == _ph)
     {
-        m_computePh = kNullHandle;
+        m_computePhOrInvalid = kInvalidHandle;
         m_dirtyFlags |= ePipelineDirty::ComputeProgram;
     }
 
-    if (prog.vsh)
+    if (prog.vshOrInvalid)
     {
-        Destroy(prog.vsh);
+        Destroy(prog.vshOrInvalid);
     }
-    if (prog.psh)
+    if (prog.pshOrInvalid)
     {
-        Destroy(prog.psh);
+        Destroy(prog.pshOrInvalid);
     }
-    if (prog.csh)
+    if (prog.cshOrInvalid)
     {
-        Destroy(prog.csh);
+        Destroy(prog.cshOrInvalid);
     }
     m_programPool.Erase(_ph);
 }
@@ -3163,13 +3361,13 @@ void Graphics::SetName(
 {
     const StorageBufferD3D11& storageBuffer = m_storageBufferPool[_sbh];
     SetD3d11ObjectName_(storageBuffer.pBuffer, _name);
-    if (storageBuffer.pSRV)
+    if (storageBuffer.pSrvOrNull)
     {
-        SetD3d11ObjectName_(storageBuffer.pSRV, _name);
+        SetD3d11ObjectName_(storageBuffer.pSrvOrNull, _name);
     }
-    if (storageBuffer.pUAV)
+    if (storageBuffer.pUavOrNull)
     {
-        SetD3d11ObjectName_(storageBuffer.pUAV, _name);
+        SetD3d11ObjectName_(storageBuffer.pUavOrNull, _name);
     }
 }
 
@@ -3179,17 +3377,17 @@ void Graphics::SetName(
 {
     const TextureD3D11& texture = m_texturePool[_texh];
     SetD3d11ObjectName_(texture.pResource, _name);
-    if (texture.pMsaaRtResource)
+    if (texture.pMsaaRtResourceOrNull)
     {
-        SetD3d11ObjectName_(texture.pMsaaRtResource, _name);
+        SetD3d11ObjectName_(texture.pMsaaRtResourceOrNull, _name);
     }
-    if (texture.pSRV)
+    if (texture.pSrvOrNull)
     {
-        SetD3d11ObjectName_(texture.pSRV, _name);
+        SetD3d11ObjectName_(texture.pSrvOrNull, _name);
     }
-    if (texture.pUAV)
+    if (texture.pUavOrNull)
     {
-        SetD3d11ObjectName_(texture.pUAV, _name);
+        SetD3d11ObjectName_(texture.pUavOrNull, _name);
     }
 }
 
@@ -3203,16 +3401,16 @@ void Graphics::SetName(
     {
         SetD3d11ObjectName_(frameBuffer.rtvs[i], _name);
     }
-    if (frameBuffer.pDSV)
+    if (frameBuffer.pDsvOrNull)
     {
-        SetD3d11ObjectName_(frameBuffer.pDSV, _name);
+        SetD3d11ObjectName_(frameBuffer.pDsvOrNull, _name);
     }
 
 #ifdef JUG_DEBUG
-    if (frameBuffer.pSwapChain)
+    if (frameBuffer.pSwapChainOrNull)
     {
         const UINT len = static_cast<UINT>(Min(_name.size(), kMaxDebugNameLength));
-        JUG_DISCARD_RETURN(frameBuffer.pSwapChain->SetPrivateData(WKPDID_D3DDebugObjectName, len, _name.data()));
+        JUG_DX_CHECK(frameBuffer.pSwapChainOrNull->SetPrivateData(WKPDID_D3DDebugObjectName, len, _name.data()));
     }
 #endif
 }
@@ -3237,7 +3435,7 @@ void Graphics::PushDebugGroup(
 #ifdef JUG_DEBUG
     if (m_pUserAnnotationOrNull)
     {
-        JUG_DISCARD_RETURN(m_pUserAnnotationOrNull->BeginEvent(ToUtf16(_name).c_str()));
+        JUG_DX_CHECK(m_pUserAnnotationOrNull->BeginEvent(EncodeUtf16(_name).c_str()));
     }
 #endif
 }
@@ -3247,7 +3445,7 @@ void Graphics::PopDebugGroup() const
 #ifdef JUG_DEBUG
     if (m_pUserAnnotationOrNull)
     {
-        JUG_DISCARD_RETURN(m_pUserAnnotationOrNull->EndEvent());
+        JUG_DX_CHECK(m_pUserAnnotationOrNull->EndEvent());
     }
 #endif
 }
@@ -3258,7 +3456,7 @@ void Graphics::SetDebugMarker(
 #ifdef JUG_DEBUG
     if (m_pUserAnnotationOrNull)
     {
-        m_pUserAnnotationOrNull->SetMarker(ToUtf16(_name).c_str());
+        m_pUserAnnotationOrNull->SetMarker(EncodeUtf16(_name).c_str());
     }
 #endif
 }
@@ -3322,21 +3520,21 @@ const FrameBufferDesc& Graphics::GetDesc(
 }
 
 void Graphics::SetVertexBuffer(
-    const VertexBufferHandle _vbh,
+    const VertexBufferHandle _vbhOrInvalid,
     const uint32_t           _offset,
-    const uint32_t           _numVerticesOrZero)
+    const uint32_t           _numVerticesOrInvalid)
 {
     const ARRAY<VertexStream, 1> streams = {
-        VertexStream { _vbh, _offset }
+        VertexStream { _vbhOrInvalid, _offset }
     };
-    SetVertexBuffers(streams, _numVerticesOrZero, kNullHandle, 0, 0);
+    SetVertexBuffers(streams, _numVerticesOrInvalid, kInvalidHandle, 0, kInvalidIndex);
 }
 
 void Graphics::SetVertexBuffers(
     const Span<const VertexStream> _streams,
-    const uint32_t                 _numVerticesOrZero)
+    const uint32_t                 _numVerticesOrInvalid)
 {
-    SetVertexBuffers(_streams, _numVerticesOrZero, kNullHandle, 0, 0);
+    SetVertexBuffers(_streams, _numVerticesOrInvalid, kInvalidHandle, 0, kInvalidIndex);
 }
 
 // ===========================================
@@ -3449,7 +3647,7 @@ ID3D11DepthStencilState* Graphics::GetOrCreateDepthStencilState_()
 
 void Graphics::ApplyPipeline_()
 {
-    if (m_dirtyFlags == kZeroFlag)
+    if (m_dirtyFlags == kNoneFlags)
     {
         return;
     }
@@ -3461,12 +3659,12 @@ void Graphics::ApplyPipeline_()
 
     if (m_dirtyFlags & ePipelineDirty::InstanceBuffer)
     {
-        m_pD3d11DeviceContext->IASetVertexBuffers(m_numStreams, 1, &m_pD3d11InstanceBuffer, &m_instanceDataStride, &m_instanceOffset);
+        m_pD3d11DeviceContext->IASetVertexBuffers(m_numStreams, 1, &m_pD3d11InstanceBufferOrNull, &m_instanceDataStride, &m_instanceOffset);
     }
 
     if (m_dirtyFlags & ePipelineDirty::IndexBuffer)
     {
-        m_pD3d11DeviceContext->IASetIndexBuffer(m_pD3d11IndexBuffer, m_dxgiIndexFormat, 0);
+        m_pD3d11DeviceContext->IASetIndexBuffer(m_pD3d11IndexBufferOrNull, m_dxgiIndexFormat, 0);
     }
 
     if (m_dirtyFlags & ePipelineDirty::PrimitiveTopology)
@@ -3476,35 +3674,35 @@ void Graphics::ApplyPipeline_()
 
     if (m_dirtyFlags & ePipelineDirty::InputLayout)
     {
-        m_pD3d11DeviceContext->IASetInputLayout(GetOrCreateD3d11InputLayout_());
+        m_pD3d11DeviceContext->IASetInputLayout(GetOrCreateD3d11InputLayoutOrNull_());
     }
 
     if (m_dirtyFlags & ePipelineDirty::Program)
     {
-        ID3D11VertexShader* pVS = nullptr;
-        ID3D11PixelShader*  pPS = nullptr;
+        ID3D11VertexShader* pVsOrNull = nullptr;
+        ID3D11PixelShader*  pPsOrNull = nullptr;
 
-        if (m_ph)
+        if (m_phOrInvalid)
         {
-            const ProgramDesc& program = m_programPool[m_ph];
-            pVS                        = program.vsh ? m_shaderPool[program.vsh].pVS : nullptr;
-            pPS                        = program.psh ? m_shaderPool[program.psh].pPS : nullptr;
+            const ProgramDesc& program = m_programPool[m_phOrInvalid];
+            pVsOrNull                  = program.vshOrInvalid ? m_shaderPool[program.vshOrInvalid].pVS : nullptr;
+            pPsOrNull                  = program.pshOrInvalid ? m_shaderPool[program.pshOrInvalid].pPS : nullptr;
         }
 
-        m_pD3d11DeviceContext->VSSetShader(pVS, nullptr, 0);
-        m_pD3d11DeviceContext->PSSetShader(pPS, nullptr, 0);
+        m_pD3d11DeviceContext->VSSetShader(pVsOrNull, nullptr, 0);
+        m_pD3d11DeviceContext->PSSetShader(pPsOrNull, nullptr, 0);
     }
 
     if (m_dirtyFlags & ePipelineDirty::ComputeProgram)
     {
-        ID3D11ComputeShader* pCS = nullptr;
-        if (m_computePh)
+        ID3D11ComputeShader* pCsOrNull = nullptr;
+        if (m_computePhOrInvalid)
         {
-            const ProgramDesc& program = m_programPool[m_computePh];
-            pCS                        = program.csh ? m_shaderPool[program.csh].pCS : nullptr;
+            const ProgramDesc& program = m_programPool[m_computePhOrInvalid];
+            pCsOrNull                  = program.cshOrInvalid ? m_shaderPool[program.cshOrInvalid].pCS : nullptr;
         }
 
-        m_pD3d11DeviceContext->CSSetShader(pCS, nullptr, 0);
+        m_pD3d11DeviceContext->CSSetShader(pCsOrNull, nullptr, 0);
     }
 
     if (m_dirtyFlags & ePipelineDirty::ConstantBuffer)
@@ -3582,7 +3780,7 @@ void Graphics::ApplyPipeline_()
 
     if (m_dirtyFlags & ePipelineDirty::BlendState)
     {
-        const VECTOR4 blendFactor = m_blendFactor.ToLinear();
+        const VEC4 blendFactor = m_blendFactor.ToLinear();
         m_pD3d11DeviceContext->OMSetBlendState(GetOrCreateBlendState_(), blendFactor.GetPtr(), 0xFFFF'FFFF);
     }
 
@@ -3599,9 +3797,9 @@ void Graphics::ApplyPipeline_()
     if (m_dirtyFlags & ePipelineDirty::FrameBuffer || m_readWriteBind[eShaderRW::Pixel].IsDirty())
     {
         // 이전 프레임버퍼의 write 작업이 끝났기에 resolve를 수행한다.
-        if (m_lastFbh && m_lastFbh != m_fbh)
+        if (m_lastFbhOrInvalid && m_lastFbhOrInvalid != m_fbhOrInvalid)
         {
-            const FrameBufferD3D11& fb = m_frameBufferPool[m_lastFbh];
+            const FrameBufferD3D11& fb = m_frameBufferPool[m_lastFbhOrInvalid];
             for (uint32_t i = 0; i < fb.numRts; ++i)
             {
                 const Attachment& att = fb.atts[i];
@@ -3610,28 +3808,28 @@ void Graphics::ApplyPipeline_()
                 TextureD3D11& texture = m_texturePool[att.texh];
                 if (fb.bMSAA)   // resolve
                 {
-                    JUG_ASSERT(texture.pMsaaRtResource, "Invalid MSAA render target resource for texture in frame buffer attachment.");
+                    JUG_ASSERT(texture.pMsaaRtResourceOrNull, "Invalid MSAA render target resource for texture in frame buffer attachment.");
                     const TextureFormatInfo formatInfo = MakeTextureFormatInfo_(texture.format);
                     for (uint32_t layer = 0; layer < texture.numLayers; ++layer)
                     {
                         const uint32_t dstIndex = CalcTextureIndex(att.mip, layer, texture.numMips);
-                        m_pD3d11DeviceContext->ResolveSubresource(texture.pResource, dstIndex, texture.pMsaaRtResource, layer, formatInfo.srv);
+                        m_pD3d11DeviceContext->ResolveSubresource(texture.pResource, dstIndex, texture.pMsaaRtResourceOrNull, layer, formatInfo.srv);
                         ++m_stats.numResolves;
                     }
                 }
 
                 // 렌더 타겟에 밉이 있으면 갱신해 준다.
-                if (texture.numMips > 1 && texture.pSRV && texture.flags.Has(eTextureOption::RenderTarget))
+                if (texture.numMips > 1 && texture.pSrvOrNull && texture.flags.Has(eTextureOption::RenderTarget))
                 {
-                    m_pD3d11DeviceContext->GenerateMips(texture.pSRV);
+                    m_pD3d11DeviceContext->GenerateMips(texture.pSrvOrNull);
                 }
             }
         }
 
         // 언바인딩
-        if (m_fbh)
+        if (m_fbhOrInvalid)
         {
-            const FrameBufferD3D11& fb   = m_frameBufferPool[m_fbh];
+            const FrameBufferD3D11& fb   = m_frameBufferPool[m_fbhOrInvalid];
             ReadWriteBind&          bind = m_readWriteBind[eShaderRW::Pixel];
 
             // PS UAV 는 렌더 타겟과 같은 호출로 묶어야 한다.
@@ -3642,7 +3840,7 @@ void Graphics::ApplyPipeline_()
                 m_pD3d11DeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(
                     fb.numRts,
                     fb.rtvs.data(),
-                    fb.pDSV,
+                    fb.pDsvOrNull,
                     startSlot,
                     numUavs,
                     bind.d3d11Resources.data() + startSlot,
@@ -3652,10 +3850,10 @@ void Graphics::ApplyPipeline_()
             }
             else
             {
-                m_pD3d11DeviceContext->OMSetRenderTargets(fb.numRts, fb.rtvs.data(), fb.pDSV);
+                m_pD3d11DeviceContext->OMSetRenderTargets(fb.numRts, fb.rtvs.data(), fb.pDsvOrNull);
             }
 
-            m_lastFbh = m_fbh;
+            m_lastFbhOrInvalid = m_fbhOrInvalid;
         }
         else
         {
@@ -3678,7 +3876,7 @@ void Graphics::ApplyPipeline_()
                 m_pD3d11DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
             }
 
-            m_lastFbh = kNullHandle;
+            m_lastFbhOrInvalid = kInvalidHandle;
         }
     }
 
@@ -3706,7 +3904,7 @@ void Graphics::ApplyPipeline_()
         m_pD3d11DeviceContext->RSSetScissorRects(1, &rect);
     }
 
-    m_dirtyFlags = kZeroFlag;
+    m_dirtyFlags = kNoneFlags;
 }
 
 // ===========================================
@@ -3714,25 +3912,25 @@ void Graphics::ApplyPipeline_()
 // ===========================================
 
 void Graphics::SetVertexBuffer(
-    const VertexBufferHandle   _vbh,
+    const VertexBufferHandle   _vbhOrInvalid,
     const uint32_t             _offset,
-    const uint32_t             _numVerticesOrZero,
-    const InstanceBufferHandle _instbh,
+    const uint32_t             _numVerticesOrInvalid,
+    const InstanceBufferHandle _instbhOrInvalid,
     const uint32_t             _instanceOffset,
-    const uint32_t             _numInstancesOrZero)
+    const uint32_t             _numInstancesOrInvalid)
 {
-    const ARRAY<VertexStream, 1> streams {
-        VertexStream { _vbh, _offset }
+    const ARRAY<VertexStream, 1> streams = {
+        VertexStream { _vbhOrInvalid, _offset }
     };
-    SetVertexBuffers(streams, _numVerticesOrZero, _instbh, _instanceOffset, _numInstancesOrZero);
+    SetVertexBuffers(streams, _numVerticesOrInvalid, _instbhOrInvalid, _instanceOffset, _numInstancesOrInvalid);
 }
 
 void Graphics::SetVertexBuffers(
     const Span<const VertexStream> _streams,
-    const uint32_t                 _numVerticesOrZero,
-    const InstanceBufferHandle     _instbh,
+    const uint32_t                 _numVerticesOrInvalid,
+    const InstanceBufferHandle     _instbhOrInvalid,
     const uint32_t                 _instanceOffset,
-    const uint32_t                 _numInstancesOrZero)
+    const uint32_t                 _numInstancesOrInvalid)
 {
     JUG_ASSERT(_streams.size() <= kNumMaxStreams, "Too many vertex streams.");
 
@@ -3744,39 +3942,38 @@ void Graphics::SetVertexBuffers(
     uint32_t numVertices = Max<uint32_t>();
     for (uint32_t i = 0; i < numStreams; ++i)
     {
-
-        ID3D11Buffer*      pBuffer = nullptr;
-        VertexLayoutHandle vlh     = kNullHandle;
-        uint32_t           stride  = 0;
+        ID3D11Buffer*      pBufferOrNull = nullptr;
+        VertexLayoutHandle vlhOrInvalid     = kInvalidHandle;
+        uint32_t           stride        = 0;
 
         const VertexStream& stream = _streams[i];
-        if (stream.vbh)
+        if (stream.vbhOrInvalid)
         {
-            const VertexBufferD3D11& vb = m_vertexBufferPool[stream.vbh];
+            const VertexBufferD3D11& vb = m_vertexBufferPool[stream.vbhOrInvalid];
 
             JUG_ASSERT(stream.offset < vb.numVertices, "Vertex stream offset is out of range.");
 
-            pBuffer     = vb.pBuffer;
-            vlh         = vb.vlh;
-            stride      = vb.stride;
-            numVertices = Min(numVertices, vb.numVertices - stream.offset);
+            pBufferOrNull = vb.pBuffer;
+            vlhOrInvalid     = vb.vlh;
+            stride        = vb.stride;
+            numVertices   = Min(numVertices, vb.numVertices - stream.offset);
         }
 
         const uint32_t offset = stream.offset * stride;
-        bLayoutChanged        = bLayoutChanged || m_vlhs[i] != vlh;
-        bBufferChanged        = bBufferChanged || m_vbhs[i] != stream.vbh || m_vertexOffsets[i] != offset;
+        bLayoutChanged        = bLayoutChanged || m_vlhs[i] != vlhOrInvalid;
+        bBufferChanged        = bBufferChanged || m_vbhs[i] != stream.vbhOrInvalid || m_vertexOffsets[i] != offset;
 
-        m_vbhs[i]               = stream.vbh;
-        m_vlhs[i]               = vlh;
-        m_d3d11VertexBuffers[i] = pBuffer;
+        m_vbhs[i]               = stream.vbhOrInvalid;
+        m_vlhs[i]               = vlhOrInvalid;
+        m_d3d11VertexBuffers[i] = pBufferOrNull;
         m_vertexStrides[i]      = stride;
         m_vertexOffsets[i]      = offset;
     }
 
     for (uint32_t i = numStreams; i < m_numStreams; ++i)
     {
-        m_vbhs[i]               = kNullHandle;
-        m_vlhs[i]               = kNullHandle;
+        m_vbhs[i]               = kInvalidHandle;
+        m_vlhs[i]               = kInvalidHandle;
         m_d3d11VertexBuffers[i] = nullptr;
         m_vertexStrides[i]      = 0;
         m_vertexOffsets[i]      = 0;
@@ -3788,40 +3985,40 @@ void Graphics::SetVertexBuffers(
         numVertices = 0;
     }
 
-    JUG_ASSERT(_numVerticesOrZero <= numVertices, "Vertex range exceeds the bound vertex streams.");
+    JUG_ASSERT(_numVerticesOrInvalid == kInvalidIndex || _numVerticesOrInvalid <= numVertices, "Vertex range exceeds the bound vertex streams.");
 
     m_numStreams  = numStreams;
-    m_numVertices = _numVerticesOrZero == 0 ? numVertices : _numVerticesOrZero;
+    m_numVertices = _numVerticesOrInvalid == kInvalidIndex ? numVertices : _numVerticesOrInvalid;
 
-    ID3D11Buffer* pInstanceBuffer = nullptr;
-    uint32_t      instanceStride  = 0;
-    uint32_t      numInstances    = 0;
-    if (_instbh)
+    ID3D11Buffer* pInstanceBufferOrNull = nullptr;
+    uint32_t      instanceStride        = 0;
+    uint32_t      numInstances          = 0;
+    if (_instbhOrInvalid)
     {
-        const InstanceBufferD3D11& instb              = m_instanceBufferPool[_instbh];
+        const InstanceBufferD3D11& instb              = m_instanceBufferPool[_instbhOrInvalid];
         const uint32_t             numBufferInstances = instb.numInstances;
 
         JUG_ASSERT(_instanceOffset < numBufferInstances, "Instance stream offset is out of range.");
-        JUG_ASSERT(_numInstancesOrZero <= numBufferInstances - _instanceOffset, "Instance range exceeds the instance buffer.");
+        JUG_ASSERT(_numInstancesOrInvalid == kInvalidIndex || _numInstancesOrInvalid <= numBufferInstances - _instanceOffset, "Instance range exceeds the instance buffer.");
 
-        pInstanceBuffer = instb.pBuffer;
-        instanceStride  = instb.stride;
-        numInstances    = numBufferInstances - _instanceOffset;
+        pInstanceBufferOrNull = instb.pBuffer;
+        instanceStride        = instb.stride;
+        numInstances          = numBufferInstances - _instanceOffset;
     }
 
     const uint32_t instanceOffset = _instanceOffset * instanceStride;
-    if (bNumStreamChanged || m_pD3d11InstanceBuffer != pInstanceBuffer
+    if (bNumStreamChanged || m_pD3d11InstanceBufferOrNull != pInstanceBufferOrNull
         || m_instanceDataStride != instanceStride || m_instanceOffset != instanceOffset)
     {
         m_dirtyFlags |= ePipelineDirty::InstanceBuffer;
     }
 
-    bLayoutChanged         = bLayoutChanged || m_instanceDataStride != instanceStride;
-    m_instbh               = _instbh;
-    m_pD3d11InstanceBuffer = pInstanceBuffer;
-    m_instanceDataStride   = instanceStride;
-    m_instanceOffset       = instanceOffset;
-    m_numInstances         = _numInstancesOrZero == 0 ? numInstances : _numInstancesOrZero;
+    bLayoutChanged               = bLayoutChanged || m_instanceDataStride != instanceStride;
+    m_instbhOrInvalid               = _instbhOrInvalid;
+    m_pD3d11InstanceBufferOrNull = pInstanceBufferOrNull;
+    m_instanceDataStride         = instanceStride;
+    m_instanceOffset             = instanceOffset;
+    m_numInstances               = _numInstancesOrInvalid == kInvalidIndex ? numInstances : _numInstancesOrInvalid;
 
     if (bBufferChanged)
     {
@@ -3835,128 +4032,128 @@ void Graphics::SetVertexBuffers(
 }
 
 void Graphics::SetIndexBuffer(
-    const IndexBufferHandle _ibh,
+    const IndexBufferHandle _ibhOrInvalid,
     const uint32_t          _offset,
-    const uint32_t          _numIndicesOrZero)
+    const uint32_t          _numIndicesOrInvalid)
 {
-    ID3D11Buffer* pBuffer    = nullptr;
-    DXGI_FORMAT   format     = DXGI_FORMAT_UNKNOWN;
-    uint32_t      numIndices = 0;
+    ID3D11Buffer* pBufferOrNull = nullptr;
+    DXGI_FORMAT   format        = DXGI_FORMAT_UNKNOWN;
+    uint32_t      numIndices    = 0;
 
-    if (_ibh)
+    if (_ibhOrInvalid)
     {
-        const IndexBufferD3D11& ib = m_indexBufferPool[_ibh];
-        pBuffer                    = ib.pBuffer;
+        const IndexBufferD3D11& ib = m_indexBufferPool[_ibhOrInvalid];
+        pBufferOrNull              = ib.pBuffer;
         format                     = ib.format;
         numIndices                 = ib.numIndices;
     }
 
-    if (m_ibh != _ibh)
+    if (m_ibhOrInvalid != _ibhOrInvalid)
     {
         m_dirtyFlags |= ePipelineDirty::IndexBuffer;
     }
 
-    m_ibh               = _ibh;
-    m_pD3d11IndexBuffer = pBuffer;
-    m_dxgiIndexFormat   = format;
-    m_indexOffset       = _offset;
-    m_numIndices        = _numIndicesOrZero == 0 ? numIndices - _offset : _numIndicesOrZero;
+    m_ibhOrInvalid               = _ibhOrInvalid;
+    m_pD3d11IndexBufferOrNull = pBufferOrNull;
+    m_dxgiIndexFormat         = format;
+    m_indexOffset             = _offset;
+    m_numIndices              = _numIndicesOrInvalid == kInvalidIndex ? numIndices - _offset : _numIndicesOrInvalid;
     JUG_ASSERT(m_indexOffset + m_numIndices <= numIndices, "Index buffer range is out of bounds.");
 }
 
 void Graphics::SetConstantBuffer(
-    const ConstantBufferHandle _cbh,
+    const ConstantBufferHandle _cbhOrInvalid,
     const eShader              _shader,
     const uint32_t             _slot)
 {
     JUG_ASSERT(_slot < kNumMaxCBufferSlots, "Constant buffer slot is out of range.");
 
     CBufferBind& bind = m_cbufferBind[_shader];
-    if (bind.resources[_slot] == _cbh)
+    if (bind.resources[_slot] == _cbhOrInvalid)
     {
         return;
     }
 
-    bind.resources[_slot]      = _cbh;
-    bind.d3d11Resources[_slot] = _cbh ? m_constantBufferPool[_cbh].pBuffer : nullptr;
+    bind.resources[_slot]      = _cbhOrInvalid;
+    bind.d3d11Resources[_slot] = _cbhOrInvalid ? m_constantBufferPool[_cbhOrInvalid].pBuffer : nullptr;
     bind.MarkDirty(_slot);
 
     m_dirtyFlags |= ePipelineDirty::ConstantBuffer;
 }
 
 void Graphics::SetTexture(
-    const TextureHandle _texh,
+    const TextureHandle _texhOrInvalid,
     const eShader       _shader,
     const uint32_t      _slot)
 {
     JUG_ASSERT(_slot < kNumMaxReadSlots, "Shader resource slot is out of range.");
 
     ReadBind& bind = m_readBind[_shader];
-    if (bind.resources[_slot] == _texh)
+    if (bind.resources[_slot] == _texhOrInvalid)
     {
         return;
     }
 
-    bind.resources[_slot]      = _texh;
-    bind.d3d11Resources[_slot] = _texh ? m_texturePool[_texh].pSRV : nullptr;
+    bind.resources[_slot]      = _texhOrInvalid;
+    bind.d3d11Resources[_slot] = _texhOrInvalid ? m_texturePool[_texhOrInvalid].pSrvOrNull : nullptr;
     bind.MarkDirty(_slot);
 
     m_dirtyFlags |= ePipelineDirty::ShaderResourceView;
 }
 
 void Graphics::SetTextureRW(
-    const TextureHandle _texh,
+    const TextureHandle _texhOrInvalid,
     const eShaderRW     _shader,
     const uint32_t      _slot)
 {
     JUG_ASSERT(_slot < kNumMaxReadWriteSlots, "Unordered access slot is out of range.");
 
     ReadWriteBind& bind = m_readWriteBind[_shader];
-    if (bind.resources[_slot] == _texh)
+    if (bind.resources[_slot] == _texhOrInvalid)
     {
         return;
     }
 
-    bind.resources[_slot]      = _texh;
-    bind.d3d11Resources[_slot] = _texh ? m_texturePool[_texh].pUAV : nullptr;
+    bind.resources[_slot]      = _texhOrInvalid;
+    bind.d3d11Resources[_slot] = _texhOrInvalid ? m_texturePool[_texhOrInvalid].pUavOrNull : nullptr;
     bind.MarkDirty(_slot);
     m_dirtyFlags |= ePipelineDirty::UnorderedAccessView;
 }
 
 void Graphics::SetBuffer(
-    const StorageBufferHandle _sbh,
+    const StorageBufferHandle _sbhOrInvalid,
     const eShader             _shader,
     const uint32_t            _slot)
 {
     JUG_ASSERT(_slot < kNumMaxReadSlots, "Shader resource slot is out of range.");
 
     ReadBind& bind = m_readBind[_shader];
-    if (bind.resources[_slot] == _sbh)
+    if (bind.resources[_slot] == _sbhOrInvalid)
     {
         return;
     }
 
-    bind.resources[_slot]      = _sbh;
-    bind.d3d11Resources[_slot] = _sbh ? m_storageBufferPool[_sbh].pSRV : nullptr;
+    bind.resources[_slot]      = _sbhOrInvalid;
+    bind.d3d11Resources[_slot] = _sbhOrInvalid ? m_storageBufferPool[_sbhOrInvalid].pSrvOrNull : nullptr;
     bind.MarkDirty(_slot);
     m_dirtyFlags |= ePipelineDirty::ShaderResourceView;
 }
 
 void Graphics::SetBufferRW(
-    const StorageBufferHandle _sbh,
+    const StorageBufferHandle _sbhOrInvalid,
     const eShaderRW           _shader,
     const uint32_t            _slot)
 {
     JUG_ASSERT(_slot < kNumMaxReadWriteSlots, "Unordered access slot is out of range.");
 
     ReadWriteBind& bind = m_readWriteBind[_shader];
-    if (bind.resources[_slot] == _sbh)
+    if (bind.resources[_slot] == _sbhOrInvalid)
     {
         return;
     }
 
-    bind.resources[_slot]      = _sbh;
-    bind.d3d11Resources[_slot] = _sbh ? m_storageBufferPool[_sbh].pUAV : nullptr;
+    bind.resources[_slot]      = _sbhOrInvalid;
+    bind.d3d11Resources[_slot] = _sbhOrInvalid ? m_storageBufferPool[_sbhOrInvalid].pUavOrNull : nullptr;
     bind.MarkDirty(_slot);
     m_dirtyFlags |= ePipelineDirty::UnorderedAccessView;
 }
@@ -3966,7 +4163,7 @@ void Graphics::SetSampler(
     const eShader         _shader,
     const uint32_t        _slot)
 {
-    SetSampler(_flags, RGBA::kZero, _shader, _slot);
+    SetSampler(_flags, RGBA::Zero(), _shader, _slot);
 }
 
 void Graphics::SetSampler(
@@ -4002,22 +4199,22 @@ void Graphics::SetRenderState(
         return;
     }
 
-    const Flags<eRenderState> changed = m_renderStateFlags ^ _flags;
-    m_renderStateFlags                = _flags;
+    const Flags<eRenderState> changedFlags = m_renderStateFlags ^ _flags;
+    m_renderStateFlags                     = _flags;
 
-    if (changed.HasAny(kTopologyStateMask))
+    if (changedFlags.HasAny(kTopologyStateMask))
     {
         m_dirtyFlags |= ePipelineDirty::PrimitiveTopology;
     }
-    if (changed.HasAny(kRasterizerStateMask))
+    if (changedFlags.HasAny(kRasterizerStateMask))
     {
         m_dirtyFlags |= ePipelineDirty::RasterizerState;
     }
-    if (changed.HasAny(kBlendStateMask))
+    if (changedFlags.HasAny(kBlendStateMask))
     {
         m_dirtyFlags |= ePipelineDirty::BlendState;
     }
-    if (changed.HasAny(kDepthStencilStateMask))
+    if (changedFlags.HasAny(kDepthStencilStateMask))
     {
         m_dirtyFlags |= ePipelineDirty::DepthStencilState;
     }
@@ -4073,38 +4270,38 @@ void Graphics::SetStencil(
 // ===========================================
 
 void Graphics::SetProgram(
-    const ProgramHandle _ph)
+    const ProgramHandle _phOrInvalid)
 {
-    if (m_ph == _ph)
+    if (m_phOrInvalid == _phOrInvalid)
     {
         return;
     }
 
-    m_ph = _ph;
+    m_phOrInvalid = _phOrInvalid;
     m_dirtyFlags |= ePipelineDirty::Program;
 }
 
 void Graphics::SetComputeProgram(
-    const ProgramHandle _ph)
+    const ProgramHandle _phOrInvalid)
 {
-    if (m_computePh == _ph)
+    if (m_computePhOrInvalid == _phOrInvalid)
     {
         return;
     }
 
-    m_computePh = _ph;
+    m_computePhOrInvalid = _phOrInvalid;
     m_dirtyFlags |= ePipelineDirty::ComputeProgram;
 }
 
 void Graphics::SetFrameBuffer(
-    const FrameBufferHandle _fbh)
+    const FrameBufferHandle _fbhOrInvalid)
 {
-    if (m_fbh == _fbh)
+    if (m_fbhOrInvalid == _fbhOrInvalid)
     {
         return;
     }
 
-    m_fbh = _fbh;
+    m_fbhOrInvalid = _fbhOrInvalid;
     m_dirtyFlags |= ePipelineDirty::FrameBuffer;
 }
 
@@ -4170,26 +4367,26 @@ void Graphics::Reset()
     m_numStreams         = 0;
     m_numVertices        = 0;
 
-    m_pD3d11IndexBuffer = nullptr;
-    m_dxgiIndexFormat   = DXGI_FORMAT_UNKNOWN;
-    m_indexOffset       = 0;
-    m_numIndices        = 0;
-    m_ibh               = kNullHandle;
+    m_pD3d11IndexBufferOrNull = nullptr;
+    m_dxgiIndexFormat         = DXGI_FORMAT_UNKNOWN;
+    m_indexOffset             = 0;
+    m_numIndices              = 0;
+    m_ibhOrInvalid               = kInvalidHandle;
 
-    m_pD3d11InstanceBuffer = nullptr;
-    m_instanceDataStride   = 0;
-    m_instanceOffset       = 0;
-    m_instbh               = kNullHandle;
-    m_numInstances         = 0;
+    m_pD3d11InstanceBufferOrNull = nullptr;
+    m_instanceDataStride         = 0;
+    m_instanceOffset             = 0;
+    m_instbhOrInvalid               = kInvalidHandle;
+    m_numInstances               = 0;
 
     m_readBind      = {};
     m_cbufferBind   = {};
     m_samplerBind   = {};
     m_readWriteBind = {};
 
-    m_ph           = kNullHandle;
-    m_computePh    = kNullHandle;
-    m_submitParams = {};
+    m_phOrInvalid        = kInvalidHandle;
+    m_computePhOrInvalid = kInvalidHandle;
+    m_submitParams    = {};
 
     m_renderStateFlags = eRenderState::None;
     m_blendFlags       = {};
@@ -4198,8 +4395,8 @@ void Graphics::Reset()
     m_bstencilFlags    = eStencil::None;
     m_stencilRef       = 0;
 
-    m_fbh     = kNullHandle;
-    m_lastFbh = kNullHandle;
+    m_fbhOrInvalid     = kInvalidHandle;
+    m_lastFbhOrInvalid = kInvalidHandle;
 
     m_viewportX = 0.f;
     m_viewportY = 0.f;
@@ -4211,7 +4408,7 @@ void Graphics::Reset()
     m_scissorW = 0;
     m_scissorH = 0;
 
-    m_dirtyFlags = kAllFlag;
+    m_dirtyFlags = kAllFlags;
 }
 
 void Graphics::Submit()
@@ -4223,8 +4420,13 @@ void Graphics::Submit()
     const UINT startInstance = m_submitParams[eSubmitParam::StartInstanceLocation];
     const INT  baseVertex    = static_cast<INT>(m_submitParams[eSubmitParam::BaseVertexLocation]);
 
-    const bool bIndexed   = m_pD3d11IndexBuffer != nullptr;
-    const bool bInstanced = m_pD3d11InstanceBuffer != nullptr && m_numInstances > 0;
+    const bool bIndexed   = m_pD3d11IndexBufferOrNull != nullptr;
+    const bool bInstanced = m_pD3d11InstanceBufferOrNull != nullptr;
+
+    if (bInstanced && m_numInstances == 0)
+    {
+        return;
+    }
 
     if (bIndexed && bInstanced)
     {
@@ -4249,7 +4451,7 @@ void Graphics::Submit()
 void Graphics::Submit(
     const StorageBufferHandle _indirectSbh,
     const uint32_t            _offset,
-    const uint32_t            _numDrawsOrZero)
+    const uint32_t            _numDrawsOrInvalid)
 {
     const StorageBufferD3D11& indirectBuffer = m_storageBufferPool[_indirectSbh];
     JUG_ASSERT(indirectBuffer.type == eStorageBuffer::IndirectArgs, "Indirect submit requires an indirect args buffer.");
@@ -4258,10 +4460,10 @@ void Graphics::Submit(
     ApplyPipeline_();
 
     const uint32_t maxDraws = (indirectBuffer.byteWidth - _offset) / kIndirectArgsStride;
-    const uint32_t numDraws = _numDrawsOrZero == 0 ? maxDraws : _numDrawsOrZero;
+    const uint32_t numDraws = _numDrawsOrInvalid == kInvalidIndex ? maxDraws : _numDrawsOrInvalid;
     JUG_ASSERT(numDraws <= maxDraws, "Indirect draw count exceeds the buffer capacity.");
 
-    const bool bIndexed = m_pD3d11IndexBuffer != nullptr;
+    const bool bIndexed = m_pD3d11IndexBufferOrNull != nullptr;
 
     for (uint32_t i = 0; i < numDraws; ++i)
     {
@@ -4285,7 +4487,7 @@ void Graphics::Dispatch(
     const uint32_t _numGroupsY,
     const uint32_t _numGroupsZ)
 {
-    JUG_ASSERT(m_computePh, "Dispatch requires a compute program.");
+    JUG_ASSERT(m_computePhOrInvalid, "Dispatch requires a compute program.");
 
     ApplyPipeline_();
 
@@ -4297,7 +4499,7 @@ void Graphics::Dispatch(
     const StorageBufferHandle _indirectSbh,
     const uint32_t            _offset)
 {
-    JUG_ASSERT(m_computePh, "Dispatch requires a compute program.");
+    JUG_ASSERT(m_computePhOrInvalid, "Dispatch requires a compute program.");
 
     const StorageBufferD3D11& indirectBuffer = m_storageBufferPool[_indirectSbh];
     JUG_ASSERT(indirectBuffer.type == eStorageBuffer::IndirectArgs, "Indirect dispatch requires an indirect args buffer.");

@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "DXGI.h"
 
+#include <utility>
+
 #include "DxMacro.h"
 
 namespace jug
@@ -12,10 +14,10 @@ namespace
     using GetDxgiDebugInterfaceFn  = HRESULT(WINAPI*)(REFIID _riid, void** _ppDebug);
     using GetDxgiDebugInterface1Fn = HRESULT(WINAPI*)(UINT _flags, REFIID _riid, void** _ppDebug);
 
-    constexpr size_t         kMaxDebugNameLength         = 255;
-    CreateDxgiFactoryFn      g_pCreateDxgiFactoryFn      = nullptr;
-    GetDxgiDebugInterfaceFn  g_pGetDxgiDebugInterfaceFn  = nullptr;
-    GetDxgiDebugInterface1Fn g_pGetDxgiDebugInterface1Fn = nullptr;
+    constexpr size_t         kMaxDebugNameLength               = 255;
+    CreateDxgiFactoryFn      g_pCreateDxgiFactoryFn            = nullptr;
+    GetDxgiDebugInterfaceFn  g_pGetDxgiDebugInterfaceFnOrNull  = nullptr;
+    GetDxgiDebugInterface1Fn g_pGetDxgiDebugInterface1FnOrNull = nullptr;
 
     void SetDxgiObjectName_(
         IDXGIObject*     _pDxgiObject,
@@ -42,9 +44,9 @@ DXGI::DXGI()
     m_pDxgiDbgDllOrNull = SDL_LoadObject("dxgidebug.dll");
     if (m_pDxgiDbgDllOrNull)
     {
-        g_pGetDxgiDebugInterfaceFn  = reinterpret_cast<GetDxgiDebugInterfaceFn>(SDL_LoadFunction(m_pDxgiDbgDllOrNull, "DXGIGetDebugInterface"));     // NOLINT
-        g_pGetDxgiDebugInterface1Fn = reinterpret_cast<GetDxgiDebugInterface1Fn>(SDL_LoadFunction(m_pDxgiDbgDllOrNull, "DXGIGetDebugInterface1"));   // NOLINT
-        if (!g_pGetDxgiDebugInterfaceFn && !g_pGetDxgiDebugInterface1Fn)
+        g_pGetDxgiDebugInterfaceFnOrNull  = reinterpret_cast<GetDxgiDebugInterfaceFn>(SDL_LoadFunction(m_pDxgiDbgDllOrNull, "DXGIGetDebugInterface"));     // NOLINT
+        g_pGetDxgiDebugInterface1FnOrNull = reinterpret_cast<GetDxgiDebugInterface1Fn>(SDL_LoadFunction(m_pDxgiDbgDllOrNull, "DXGIGetDebugInterface1"));   // NOLINT
+        if (!g_pGetDxgiDebugInterfaceFnOrNull && !g_pGetDxgiDebugInterface1FnOrNull)
         {
             JUG_CORE_LOG_WARN("Failed to load dxgidebug.dll functions. Debugging features will be unavailable.");
             SDL_UnloadObject(m_pDxgiDbgDllOrNull);
@@ -68,7 +70,7 @@ DXGI::DXGI()
     }
 
     // get factory
-    IDXGIFactory1* pFactory1 = nullptr;
+    IDXGIFactory1* pFactory1;
     JUG_DX_CHECK(g_pCreateDxgiFactoryFn(IID_IDXGIFactory1, reinterpret_cast<void**>(&pFactory1)));
     if (pFactory1)
     {
@@ -79,12 +81,16 @@ DXGI::DXGI()
     SetDxgiObjectName_(m_pFactory, "JugGfx.DXGI.Factory");
 
     // vram이 가장 많은 어댑터를 선택한다.
-    IDXGIAdapter1* pAdapter1    = nullptr;
-    IDXGIAdapter1* pBestAdapter = nullptr;
-    size_t         bestMemory   = 0;
+    constexpr size_t kMiB = 1024ull * 1024ull;
+
+    IDXGIAdapter1* pAdapter1          = nullptr;
+    IDXGIAdapter1* pBestAdapterOrNull = nullptr;
+    size_t         bestMemory         = 0;
+    uint32_t       bestIndex          = 0;
+    String         bestName           = {};
     for (uint32_t i = 0; m_pFactory->EnumAdapters1(i, &pAdapter1) != DXGI_ERROR_NOT_FOUND; ++i)
     {
-        DXGI_ADAPTER_DESC1 ad = {};
+        DXGI_ADAPTER_DESC1 ad;
         if (FAILED(pAdapter1->GetDesc1(&ad)))
         {
             JUG_DX_RELEASE(pAdapter1);
@@ -93,67 +99,82 @@ DXGI::DXGI()
 
         const bool bSoftware = (ad.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0;
 
-        String description;
-        AppendUtf16(description, WStringView { ad.Description });
+        String desc = {};
+        AppendUtf16(desc, ad.Description);
 
-        JUG_CORE_LOG_INFO("DXGI adapter #{}: {}{}", i, description, bSoftware ? " (software)" : "");
+        // UMD 드라이버 버전.
+        String        driverVersion = "?";
+        LARGE_INTEGER umdVersion;
+        if (SUCCEEDED(pAdapter1->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umdVersion)))
+        {
+            driverVersion = Format("{}.{}.{}.{}", HIWORD(umdVersion.HighPart), LOWORD(umdVersion.HighPart), HIWORD(umdVersion.LowPart), LOWORD(umdVersion.LowPart));
+        }
 
-        JUG_CORE_LOG_INFO("  VendorId: 0x{:04X}, DeviceId: 0x{:04X}, SubSysId: 0x{:08X}, Revision: 0x{:02X}",
-                          ad.VendorId,
-                          ad.DeviceId,
-                          ad.SubSysId,
-                          ad.Revision);
+        if (bSoftware)
+        {
+            JUG_CORE_LOG_INFO("GPU[{}]: {} [software]", i, desc);
+        }
+        else
+        {
+            JUG_CORE_LOG_INFO("GPU[{}]: {} ({:04X}:{:04X}), driver {}, VRAM {} MiB, shared {} MiB", i, desc, ad.VendorId, ad.DeviceId, driverVersion, ad.DedicatedVideoMemory / kMiB, ad.SharedSystemMemory / kMiB);
+        }
+        JUG_CORE_LOG_TRACE("GPU[{}]: subsys 0x{:08X}, rev 0x{:02X}, dedicated system {} MiB", i, ad.SubSysId, ad.Revision, ad.DedicatedSystemMemory / kMiB);
 
-        JUG_CORE_LOG_INFO("  Memory: {} MiB (video), {} MiB (system), {} MiB (shared)",
-                          ad.DedicatedVideoMemory / (1024ull * 1024ull),
-                          ad.DedicatedSystemMemory / (1024ull * 1024ull),
-                          ad.SharedSystemMemory / (1024ull * 1024ull));
-
-        IDXGIOutput* pOutput = nullptr;
+        IDXGIOutput* pOutput;
         for (UINT j = 0; SUCCEEDED(pAdapter1->EnumOutputs(j, &pOutput)); ++j)
         {
             DXGI_OUTPUT_DESC outputDesc = {};
             if (SUCCEEDED(pOutput->GetDesc(&outputDesc)))
             {
-                String deviceName;
+                String deviceName = {};
                 AppendUtf16(deviceName, WStringView { outputDesc.DeviceName });
-                JUG_CORE_LOG_INFO("  Output #{}: {}", j, deviceName);
 
-                IDXGIOutput6* pOutput6 = nullptr;
+                const RECT& rc = outputDesc.DesktopCoordinates;
+
+                // 현재 출력 색 공간이 HDR10인지. 지원 여부가 아니라 윈도우 HDR 켜짐 여부다.
+                String        colorInfo = {};
+                IDXGIOutput6* pOutput6;
                 if (SUCCEEDED(pOutput->QueryInterface(IID_PPV_ARGS(&pOutput6))))
                 {
                     DXGI_OUTPUT_DESC1 outputDesc1 = {};
                     if (SUCCEEDED(pOutput6->GetDesc1(&outputDesc1)))
                     {
-                        JUG_CORE_LOG_INFO("    HDR support: {}", outputDesc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "true" : "false");
+                        const bool bHdr = outputDesc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                        colorInfo       = Format(", {} bpc, HDR {}, luminance {:.0f}-{:.0f} nits", outputDesc1.BitsPerColor, bHdr ? "on" : "off", outputDesc1.MinLuminance, outputDesc1.MaxLuminance);
                     }
                     JUG_DX_RELEASE(pOutput6);
                 }
+
+                JUG_CORE_LOG_INFO("    output[{}] {} {}x{} at ({}, {}){}", i, j, deviceName, rc.right - rc.left, rc.bottom - rc.top, rc.left, rc.top, colorInfo);
             }
             JUG_DX_RELEASE(pOutput);
         }
 
         // 소프트웨어 어댑터는 제외함.
-        if (!bSoftware && (!pBestAdapter || ad.DedicatedVideoMemory > bestMemory))
+        if (!bSoftware && (!pBestAdapterOrNull || ad.DedicatedVideoMemory > bestMemory))
         {
-            JUG_DX_RELEASE(pBestAdapter);
+            JUG_DX_RELEASE(pBestAdapterOrNull);
             bestMemory = ad.DedicatedVideoMemory;
+            bestIndex  = i;
+            bestName   = std::move(desc);
 
-            pBestAdapter = pAdapter1;
-            pAdapter1    = nullptr;
+            pBestAdapterOrNull = pAdapter1;
+            pAdapter1          = nullptr;
         }
 
         JUG_DX_RELEASE(pAdapter1);
     }
 
-    if (pBestAdapter)
+    if (pBestAdapterOrNull)
     {
-        JUG_DX_CHECK(pBestAdapter->QueryInterface(IID_PPV_ARGS(&m_pAdapterOrNull)));
-        JUG_DISCARD_RETURN(pBestAdapter->EnumOutputs(0, &m_pOutput));
-        JUG_DX_RELEASE(pBestAdapter);
+        JUG_CORE_LOG_INFO("Using GPU[{}]: {}", bestIndex, bestName);
+
+        JUG_DX_CHECK(pBestAdapterOrNull->QueryInterface(IID_PPV_ARGS(&m_pAdapterOrNull)));
+        JUG_DISCARD_RETURN(pBestAdapterOrNull->EnumOutputs(0, &m_pOutputOrNull));
+        JUG_DX_RELEASE(pBestAdapterOrNull);
 
         SetDxgiObjectName_(m_pAdapterOrNull, "JugGfx.DXGI.Adapter");
-        SetDxgiObjectName_(m_pOutput, "JugGfx.DXGI.Output");
+        SetDxgiObjectName_(m_pOutputOrNull, "JugGfx.DXGI.Output");
     }
     else
     {
@@ -172,7 +193,7 @@ DXGI::DXGI(
     , m_pDxgiDbgDllOrNull(std::exchange(_other.m_pDxgiDbgDllOrNull, nullptr))
     , m_pAdapterOrNull(std::exchange(_other.m_pAdapterOrNull, nullptr))
     , m_pFactory(std::exchange(_other.m_pFactory, nullptr))
-    , m_pOutput(std::exchange(_other.m_pOutput, nullptr))
+    , m_pOutputOrNull(std::exchange(_other.m_pOutputOrNull, nullptr))
 {
 }
 
@@ -186,7 +207,7 @@ DXGI& DXGI::operator=(
         m_pDxgiDbgDllOrNull = std::exchange(_other.m_pDxgiDbgDllOrNull, nullptr);
         m_pAdapterOrNull    = std::exchange(_other.m_pAdapterOrNull, nullptr);
         m_pFactory          = std::exchange(_other.m_pFactory, nullptr);
-        m_pOutput           = std::exchange(_other.m_pOutput, nullptr);
+        m_pOutputOrNull     = std::exchange(_other.m_pOutputOrNull, nullptr);
     }
     return *this;
 }
@@ -243,14 +264,14 @@ IFactory* DXGI::GetFactory() const
     return m_pFactory;
 }
 
-IOutput* DXGI::GetOutput() const
+IOutput* DXGI::GetOutputOrNull() const
 {
-    return m_pOutput;
+    return m_pOutputOrNull;
 }
 
 void DXGI::Reset_()
 {
-    JUG_DX_RELEASE(m_pOutput);
+    JUG_DX_RELEASE(m_pOutputOrNull);
     JUG_DX_RELEASE(m_pAdapterOrNull);
     JUG_DX_RELEASE(m_pFactory);
 

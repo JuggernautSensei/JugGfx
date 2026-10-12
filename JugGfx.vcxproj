@@ -20,16 +20,15 @@
     <ClInclude Include="JugGfx\ImGuiRenderer.h" />
     <ClInclude Include="JugGfx\Model.h" />
     <ClInclude Include="JugGfx\ModelImporter.h" />
-    <ClInclude Include="JugGfx\ModelDetail.h" />
+    <ClInclude Include="JugGfx\ModelImporterDetail.h" />
     <ClInclude Include="JugGfx\RenderGraph.h" />
     <ClInclude Include="JugGfx\Base.h" />
     <ClInclude Include="JugGfx\Error.h" />
     <ClInclude Include="JugGfx\GraphicsInclude.h" />
     <ClInclude Include="JugGfx\Image.h" />
+    <ClInclude Include="JugGfx\ImageDetail.h" />
     <ClInclude Include="JugGfx\ImageImporter.h" />
     <ClInclude Include="JugGfx\ImageExporter.h" />
-    <ClInclude Include="JugGfx\ImageDetail.h" />
-    <ClInclude Include="JugGfx\ResourceUtils.h" />
     <ClInclude Include="JugGfx\Shader.h" />
     <ClInclude Include="JugGfx\Texture.h" />
     <ClInclude Include="JugGfx\VertexLayout.h" />
@@ -44,19 +43,17 @@
     <ClCompile Include="JugGfx\ImGuiInclude.cpp" />
     <ClCompile Include="JugGfx\ImGuiImage.cpp" />
     <ClCompile Include="JugGfx\ImGuiRenderer.cpp" />
-    <ClCompile Include="JugGfx\ModelImporter.cpp" />
-    <ClCompile Include="JugGfx\ModelDetail.cpp" />
-    <ClCompile Include="JugGfx\ModelImporter_cgltf.cpp" />
-    <ClCompile Include="JugGfx\ModelImporter_ufbx.cpp" />
     <ClCompile Include="JugGfx\RenderGraph.cpp" />
     <ClCompile Include="JugGfx\Base.cpp" />
     <ClCompile Include="JugGfx\Error.cpp" />
     <ClCompile Include="JugGfx\GraphicsInclude.cpp" />
     <ClCompile Include="JugGfx\Image.cpp" />
-    <ClCompile Include="JugGfx\ImageImporter.cpp" />
-    <ClCompile Include="JugGfx\ImageExporter.cpp" />
     <ClCompile Include="JugGfx\ImageDetail.cpp" />
-    <ClCompile Include="JugGfx\ResourceUtils.cpp" />
+    <ClCompile Include="JugGfx\ImageExporter.cpp" />
+    <ClCompile Include="JugGfx\ImageImporter.cpp" />
+    <ClCompile Include="JugGfx\ModelImporter.cpp" />
+    <ClCompile Include="JugGfx\ModelImporter_fbx.cpp" />
+    <ClCompile Include="JugGfx\ModelImporter_gltf.cpp" />
     <ClCompile Include="JugGfx\Shader.cpp" />
     <ClCompile Include="JugGfx\Texture.cpp" />
     <ClCompile Include="JugGfx\VertexLayout.cpp" />
@@ -65,6 +62,13 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="JugGfx\TangentFrame.cpp" />
+    <ClCompile Include="Vendor\ufbx\ufbx\ufbx.c">
+      <CompileAs>CompileAsC</CompileAs>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

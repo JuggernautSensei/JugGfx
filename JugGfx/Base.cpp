@@ -7,49 +7,27 @@ namespace jug
 
 namespace
 {
-    template<EnumT E, typename U = UnderlyingT<E>>
-    [[nodiscard]] constexpr U MakeFieldMask_(
-        const E _lowestNotZero,
-        const E _highest)
-    {
-        JUG_ASSERT(static_cast<U>(_lowestNotZero) > 0, "_lowestNotZero must be greater than zero");
-        JUG_ASSERT(static_cast<U>(_lowestNotZero) <= static_cast<U>(_highest), "_lowestNotZero must not exceed _highest");
+    constexpr Flags<eRenderState> kTopologyMask { MakeFieldMask(eRenderState::Topology_TriangleStrip, eRenderState::Topology_PointList) };
+    constexpr Flags<eRenderState> kCullModeMask { MakeFieldMask(eRenderState::Cull_Front, eRenderState::Cull_Back) };
+    constexpr Flags<eRenderState> kDepthTestMask { MakeFieldMask(eRenderState::DepthTest_Less, eRenderState::DepthTest_Never) };
 
-        const U high = static_cast<U>(std::bit_ceil(static_cast<U>(static_cast<U>(_highest) + 1)) - 1);
-        const U low  = static_cast<U>(std::bit_floor(static_cast<U>(_lowestNotZero)) - 1);
-        return static_cast<U>(high ^ low);
-    }
+    constexpr Flags<eBlend> kSrcMask { MakeFieldMask(eBlend::Src_One, eBlend::Src_InvBlendFactor) };
+    constexpr Flags<eBlend> kDstMask { MakeFieldMask(eBlend::Dst_One, eBlend::Dst_InvBlendFactor) };
+    constexpr Flags<eBlend> kOpMask { MakeFieldMask(eBlend::Op_Subtract, eBlend::Op_Max) };
+    constexpr Flags<eBlend> kSrcAlphaMask { MakeFieldMask(eBlend::SrcAlpha_One, eBlend::SrcAlpha_InvBlendFactor) };
+    constexpr Flags<eBlend> kDstAlphaMask { MakeFieldMask(eBlend::DstAlpha_One, eBlend::DstAlpha_InvBlendFactor) };
+    constexpr Flags<eBlend> kOpAlphaMask { MakeFieldMask(eBlend::OpAlpha_Subtract, eBlend::OpAlpha_Max) };
 
-    template<EnumT E>
-    [[nodiscard]] constexpr uint32_t ExtractField_(
-        const Flags<E> _flags,
-        const Flags<E> _maskFlags,
-        const uint32_t _shift)
-    {
-        return static_cast<uint32_t>((_flags & _maskFlags).GetFlags()) >> _shift;
-    }
+    constexpr Flags<eStencil> kStencilFailDepthPassMask { MakeFieldMask(eStencil::StencilFail_DepthPass_Zero, eStencil::StencilFail_DepthPass_Decr) };
+    constexpr Flags<eStencil> kStencilPassDepthFailMask { MakeFieldMask(eStencil::StencilPass_DepthFail_Zero, eStencil::StencilPass_DepthFail_Decr) };
+    constexpr Flags<eStencil> kStencilFailDepthFailMask { MakeFieldMask(eStencil::StencilPass_DepthPass_Zero, eStencil::StencilPass_DepthPass_Decr) };
+    constexpr Flags<eStencil> kStencilCompareMask { MakeFieldMask(eStencil::Compare_Less, eStencil::Compare_Never) };
 
-    constexpr Flags<eRenderState> kTopologyMask { MakeFieldMask_(eRenderState::Topology_TriangleStrip, eRenderState::Topology_PointList) };
-    constexpr Flags<eRenderState> kCullModeMask { MakeFieldMask_(eRenderState::Cull_Front, eRenderState::Cull_Back) };
-    constexpr Flags<eRenderState> kDepthTestMask { MakeFieldMask_(eRenderState::DepthTest_Less, eRenderState::DepthTest_Never) };
-
-    constexpr Flags<eBlend> kSrcMask { MakeFieldMask_(eBlend::Src_One, eBlend::Src_InvBlendFactor) };
-    constexpr Flags<eBlend> kDstMask { MakeFieldMask_(eBlend::Dst_One, eBlend::Dst_InvBlendFactor) };
-    constexpr Flags<eBlend> kOpMask { MakeFieldMask_(eBlend::Op_Subtract, eBlend::Op_Max) };
-    constexpr Flags<eBlend> kSrcAlphaMask { MakeFieldMask_(eBlend::SrcAlpha_One, eBlend::SrcAlpha_InvBlendFactor) };
-    constexpr Flags<eBlend> kDstAlphaMask { MakeFieldMask_(eBlend::DstAlpha_One, eBlend::DstAlpha_InvBlendFactor) };
-    constexpr Flags<eBlend> kOpAlphaMask { MakeFieldMask_(eBlend::OpAlpha_Subtract, eBlend::OpAlpha_Max) };
-
-    constexpr Flags<eStencil> kStencilFailDepthPassMask { MakeFieldMask_(eStencil::StencilFail_DepthPass_Zero, eStencil::StencilFail_DepthPass_Decr) };
-    constexpr Flags<eStencil> kStencilPassDepthFailMask { MakeFieldMask_(eStencil::StencilPass_DepthFail_Zero, eStencil::StencilPass_DepthFail_Decr) };
-    constexpr Flags<eStencil> kStencilFailDepthFailMask { MakeFieldMask_(eStencil::StencilPass_DepthPass_Zero, eStencil::StencilPass_DepthPass_Decr) };
-    constexpr Flags<eStencil> kStencilCompareMask { MakeFieldMask_(eStencil::Compare_Less, eStencil::Compare_Never) };
-
-    constexpr Flags<eSampler> kFilterMask { MakeFieldMask_(eSampler::Filter_MinLinear, eSampler::Filter_Anisotropic16) };
-    constexpr Flags<eSampler> kUMask { MakeFieldMask_(eSampler::U_Mirror, eSampler::U_MirrorOnce) };
-    constexpr Flags<eSampler> kVMask { MakeFieldMask_(eSampler::V_Mirror, eSampler::V_MirrorOnce) };
-    constexpr Flags<eSampler> kWMask { MakeFieldMask_(eSampler::W_Mirror, eSampler::W_MirrorOnce) };
-    constexpr Flags<eSampler> kSamplerCompareMask { MakeFieldMask_(eSampler::Compare_Less, eSampler::Compare_Never) };
+    constexpr Flags<eSampler> kFilterMask { MakeFieldMask(eSampler::Filter_MinLinear, eSampler::Filter_Anisotropic16) };
+    constexpr Flags<eSampler> kUMask { MakeFieldMask(eSampler::U_Mirror, eSampler::U_MirrorOnce) };
+    constexpr Flags<eSampler> kVMask { MakeFieldMask(eSampler::V_Mirror, eSampler::V_MirrorOnce) };
+    constexpr Flags<eSampler> kWMask { MakeFieldMask(eSampler::W_Mirror, eSampler::W_MirrorOnce) };
+    constexpr Flags<eSampler> kSamplerCompareMask { MakeFieldMask(eSampler::Compare_Less, eSampler::Compare_Never) };
 }   // namespace
 
 // ===========================================

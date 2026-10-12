@@ -22,8 +22,6 @@ enum class eModelImportOption
     SkipSkins        = 1 << 3,   // 스킨과 정점 본 가중치 제외
     SkipMorphTargets = 1 << 4,   // 모프 타깃/가중치 제외
     SkipAnimations   = 1 << 5,   // 애니메이션 제외
-    GenerateNormals  = 1 << 6,   // 법선이 없는 메시에만 생성
-    GenerateTangents = 1 << 7,   // 탄젠트가 없는 메시에만 생성. 법선 + texCoord0 필요, 없으면 경고 후 건너뜀
 };
 
 struct ModelImportConfig
@@ -35,7 +33,10 @@ struct ModelImportConfig
     Optional<eModelFileFormat> formatHint = kNullopt;     // 파일 내용을 보고 판별할 수 없는 경우 확장자 힌트를 사용. 지정하지 않으면 내용으로만 판별.
 };
 
+// 메모리만으로 해석 가능한 데이터 (GLB, data URI, 내장) 전용. 외부 파일 참조는 풀 수 없음
 [[nodiscard]] Result<Model> ImportModel(MemoryView _mem, const ModelImportConfig& _config);
-[[nodiscard]] Result<Model> ImportModelFromFile(const FilePath& _path, const ModelImportConfig& _config);   // 포맷은 내용으로 판별하고 확장자는 힌트로 사용 (.obj .fbx .gltf .glb, 대소문자 무시)
+
+// 외부 파일 참조는 _path 가 있는 폴더 기준. 포맷은 내용으로 판별하고 확장자는 힌트로 사용 (.obj .fbx .gltf .glb, 대소문자 무시)
+[[nodiscard]] Result<Model> ImportModelFromFile(const FilePath& _path, const ModelImportConfig& _config);
 
 }   // namespace jug

@@ -4,9 +4,6 @@
 namespace jug::image_detail
 {
 
-constexpr uint32_t kNumRgbaChannels = 4;
-constexpr uint32_t kAlphaChannel    = 3;
-
 // DDS header flags
 constexpr uint32_t kDdsdCaps        = 0x1;
 constexpr uint32_t kDdsdHeight      = 0x2;
@@ -18,7 +15,7 @@ constexpr uint32_t kDdsdLinearSize  = 0x80000;
 constexpr uint32_t kDdsdDepth       = 0x800000;
 
 // DDS pixel format flags
-constexpr uint32_t kDdpfFourCC = 0x4;
+constexpr uint32_t kDdpfFourCc = 0x4;
 
 // DDS caps
 constexpr uint32_t kDdsCapsComplex = 0x8;
@@ -31,20 +28,17 @@ constexpr uint32_t kDdsCaps2AllFaces = 0xFC00;
 constexpr uint32_t kDdsCaps2Volume   = 0x200000;
 
 // DDS dx10
-constexpr uint32_t kDdsDimensionTexture2D     = 3;
-constexpr uint32_t kDdsDimensionTexture3D     = 4;
-constexpr uint32_t kDdsMiscTextureCube        = 0x4;
-constexpr uint32_t kDdsAlphaModeMask          = 0x7;
-constexpr uint32_t kDdsAlphaModePremultiplied = 2;
+constexpr uint32_t kDdsDimensionTexture1D = 2;
+constexpr uint32_t kDdsDimensionTexture2D = 3;
+constexpr uint32_t kDdsDimensionTexture3D = 4;
+constexpr uint32_t kDdsMiscTextureCube    = 0x4;
 
-// DDS header
+// DDS magic / FourCC
 constexpr uint32_t kDdsMagic      = JUG_FOURCC('D', 'D', 'S', ' ');
 constexpr uint32_t kDdsFourCcDx10 = JUG_FOURCC('D', 'X', '1', '0');
 
 struct DDS_PIXEL_FORMAT
 {
-    [[nodiscard]] Optional<eTextureFormat> ToTextureFormat() const;
-
     uint32_t size;
     uint32_t flags;
     uint32_t fourCC;
@@ -85,94 +79,21 @@ struct DDS_HEADER_DX10
 };
 static_assert(sizeof(DDS_HEADER_DX10) == 20);
 
+// R32G32B32_FLOAT. eTextureFormat 에 없는 유일한 지원 포맷
+constexpr uint32_t kDxgiFormatR32G32B32Float = 6;
 
-[[nodiscard]] Optional<eTextureFormat> ToTextureFormatFromDXGI(
-    uint32_t _dxgiFormat);
+// DXGI 포맷 <-> Image 포맷 대응표의 한 행
+struct ImageFormatEntry
+{
+    uint32_t                 dxgiFormat    = 0;
+    Optional<eTextureFormat> gpuFormat     = {};   // R32G32B32_FLOAT 만 없음
+    eChannelFormat           channelFormat = eChannelFormat::UNorm8;
+    uint32_t                 numChannels   = 0;
+    bool                     bSRGB         = false;
+};
 
-[[nodiscard]] Optional<uint32_t> ToDxgiFormat(
-    eTextureFormat _format);
-
-[[nodiscard]] Optional<eTextureFormat> ToTextureFormatFromVK(
-    uint32_t _vkFormat);
-
-[[nodiscard]] Optional<uint32_t> ToVkFormat(
-    eTextureFormat _format);
-
-[[nodiscard]] Optional<eTextureFormat> ToTextureFormatFromGL(
-    uint32_t _glInternalFormat);
-
-[[nodiscard]] Optional<uint32_t> ToGlFormat(
-    eTextureFormat _format);
-
-// 로그용 텍스처 포맷 이름. 값이 없으면 "none".
-[[nodiscard]] StringView ToLogName(
-    Optional<eTextureFormat> _format);
-
-// texture format 을 PixelFormat 으로 변환. 압축/packed/BGRA 포맷은 unknown. bSRGB 는 항상 포맷의 sRGB 여부.
-[[nodiscard]] PixelFormat ToPixelFormatOrUnknown(
-    eTextureFormat _format);
-
-// 픽셀 단위 채널 축소/확장. 확장 시 r.g.b는 0, a는 1.
-void ConvertChannels(
-    MemoryView        _src,
-    MutableMemoryView _dst,
-    size_t            _numPixels,
-    uint32_t          _numSrcChannels,
-    uint32_t          _numDstChannels,
-    ChannelFormat     _type);
-
-// _bcFormat으로 입축시 원하는 포맷
-[[nodiscard]] Optional<eTextureFormat> ToCompressInputFormat(
-    eTextureFormat _bcFormat);
-
-// 2D slice 하나 압축. _src 는 ToCompressInputFormat 포맷.
-void CompressSlice(
-    eTextureFormat    _srcBcFormat,
-    MemoryView        _src,
-    MutableMemoryView _dst,
-    uint32_t          _width,
-    uint32_t          _height);
-
-// 압축 해제시 텍스처 포맷
-[[nodiscard]] Optional<eTextureFormat> ToDecompressedFormat(
-    eTextureFormat _bcFormat);
-
-// 2D slice 하나 압축 해제. _dst 는 ToDecompressedFormat 포맷.
-void DecompressSlice(
-    eTextureFormat    _srcBcFormat,
-    MemoryView        _src,
-    MutableMemoryView _dst,
-    uint32_t          _width,
-    uint32_t          _height);
-
-[[nodiscard]] bool IsRawFormat(
-    const PixelFormat& _format);
-
-[[nodiscard]] PixelFormat GetPixelFormat(
-    const ImageDesc& _desc);
-
-[[nodiscard]] uint32_t CalcRowPitch(
-    const Image& _image,
-    uint32_t     _width);
-
-[[nodiscard]] uint32_t CalcSlicePitch(
-    const Image& _image,
-    uint32_t     _width,
-    uint32_t     _height);
-
-[[nodiscard]] size_t CalcMipSize(
-    const Image& _image,
-    uint32_t     _mip);
-
-[[nodiscard]] size_t CalcLayerSize(
-    const Image& _image);
-
-[[nodiscard]] size_t CalcTotalSize(
-    const Image& _image);
-
-[[nodiscard]] size_t CalcOffset(
-    const Image& _image,
-    uint32_t     _layer,
-    uint32_t     _mip);
+// 미지원이면 nullptr
+[[nodiscard]] const ImageFormatEntry* FindFormatByDxgiOrNull(uint32_t _dxgiFormat);
+[[nodiscard]] const ImageFormatEntry* FindFormatByGpuFormatOrNull(eTextureFormat _gpuFormat);
 
 }   // namespace jug::image_detail

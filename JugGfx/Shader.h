@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "Base.h"
 
+struct ISlangBlob;
+
 namespace jug
 {
 
@@ -8,24 +10,51 @@ namespace jug
 //  Shader
 // ===========================================
 
-enum class eShaderCompileOption
+// Slang compiler options (target: D3D11 / DXBC / SM5.x)
+enum class eShaderCompileOption : uint32_t
 {
-    None                           = 0,
-    Debug                          = 1 << 0,    // Compile with debug information and skip optimizations
-    SkipValidation                 = 1 << 1,    // Skip validation of the shader code
-    SkipOptimization               = 1 << 2,    // Skip optimization of the shader code
-    PackMatrixRowMajor             = 1 << 3,    // Pack matrices in row-major order
-    PackMatrixColumnMajor          = 1 << 4,    // Pack matrices in column-major order
-    PartialPrecision               = 1 << 5,    // Use partial precision for floating-point operations
-    ForceVertexShaderSoftwareNoOpt = 1 << 6,    // Force the vertex shader to be compiled for software execution without optimizations
-    ForcePixelShaderSoftwareNoOpt  = 1 << 7,    // Force the pixel shader to be compiled for software execution without optimizations
-    NoPreshader                    = 1 << 8,    // Disable the preshader optimization
-    AvoidFlowControl               = 1 << 9,    // Avoid flow control constructs in the shader code
-    PreferFlowControl              = 1 << 10,   // Prefer flow control constructs in the shader code
-    EnableStrictness               = 1 << 11,   // Enable strictness checks during shader compilation
-    EnableBackwardsCompatibility   = 1 << 12,   // Enable backwards compatibility mode for shader compilation
-    IeeeStrictness                 = 1 << 13,   // Enable IEEE strictness for floating-point operations
+    None = 0,
+
+    // matrix layout (default: column-major, same as fxc)
+    MatrixLayout_Column = 0 << 0,   // default
+    MatrixLayout_Row    = 1 << 0,
+
+    // optimization
+    Optimization_Default = 0 << 1,   // default
+    Optimization_None    = 1 << 1,
+    Optimization_High    = 2 << 1,
+    Optimization_Maximal = 3 << 1,
+
+    // debug information
+    DebugInfo_None     = 0 << 3,   // default
+    DebugInfo_Minimal  = 1 << 3,
+    DebugInfo_Standard = 2 << 3,
+    DebugInfo_Maximal  = 3 << 3,
+
+    // language
+    ZeroInitialize      = 1 << 5,
+    UnscopedEnum        = 1 << 6,
+    DisableShortCircuit = 1 << 7,
+
+    // capability
+    IgnoreCapabilities         = 1 << 8,
+    RestrictiveCapabilityCheck = 1 << 9,
+
+    // codegen
+    MinimumSlangOptimization = 1 << 10,
+    DisableSpecialization    = 1 << 11,
+    PreserveParameters       = 1 << 12,
+    Obfuscate                = 1 << 13,
+    NoMangle                 = 1 << 14,
+
+    // layout
+    NoHlslBinding                    = 1 << 15,
+    NoHlslPackConstantBufferElements = 1 << 16,
 };
+
+[[nodiscard]] Flags<eShaderCompileOption> FilterMatrixLayout(Flags<eShaderCompileOption> _flags);
+[[nodiscard]] Flags<eShaderCompileOption> FilterOptimization(Flags<eShaderCompileOption> _flags);
+[[nodiscard]] Flags<eShaderCompileOption> FilterDebugInfo(Flags<eShaderCompileOption> _flags);
 
 struct ShaderMacro
 {
@@ -40,32 +69,23 @@ struct ShaderMacro
 
 struct ShaderCompileConfig
 {
-    eShader                     type       = eShader::Vertex;
-    StringView                  entryPoint = {};
-    Span<const ShaderMacro>     macros     = {};
-    Flags<eShaderCompileOption> flags      = eShaderCompileOption::None;
+    eShader                     type         = eShader::Vertex;
+    StringView                  entryPoint   = {};
+    Span<const ShaderMacro>     macros       = {};
+    Span<const StringView>      includePaths = {};
+    Flags<eShaderCompileOption> flags        = eShaderCompileOption::None;
 };
 
 struct BlobDelete
 {
-    void operator()(void* _p) const
-    {
-        if (_p)
-        {
-            static_cast<ID3DBlob*>(_p)->Release();
-        }
-    }
+    void operator()(ISlangBlob* _pBlob) const;
 };
 
 struct ShaderBytecode
 {
-    [[nodiscard]] MemoryView GetBytecode() const
-    {
-        JUG_ASSERT(pBlob, "Shader pBlob is null.\n");
-        return { pBlob->GetBufferPointer(), pBlob->GetBufferSize() };
-    }
+    [[nodiscard]] MemoryView GetBytecode() const;
 
-    Scoped<ID3DBlob, BlobDelete> pBlob = nullptr;
+    Scoped<ISlangBlob, BlobDelete> pBlob = nullptr;
 };
 
 [[nodiscard]] Result<ShaderBytecode> CompileShader(StringView _source, const ShaderCompileConfig& _config);

@@ -49,32 +49,26 @@
     <ClCompile Include="JugGfx\Image.cpp">
       <Filter>Resource\Image</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ImageImporter.cpp">
+    <ClCompile Include="JugGfx\ImageDetail.cpp">
       <Filter>Resource\Image</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\ImageExporter.cpp">
       <Filter>Resource\Image</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ImageDetail.cpp">
+    <ClCompile Include="JugGfx\ImageImporter.cpp">
       <Filter>Resource\Image</Filter>
-    </ClCompile>
-    <ClCompile Include="JugGfx\Shader.cpp">
-      <Filter>Resource\Shader</Filter>
-    </ClCompile>
-    <ClCompile Include="JugGfx\ResourceUtils.cpp">
-      <Filter>Resource</Filter>
     </ClCompile>
     <ClCompile Include="JugGfx\ModelImporter.cpp">
       <Filter>Resource\Model</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ModelDetail.cpp">
+    <ClCompile Include="JugGfx\ModelImporter_fbx.cpp">
       <Filter>Resource\Model</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ModelImporter_cgltf.cpp">
+    <ClCompile Include="JugGfx\ModelImporter_gltf.cpp">
       <Filter>Resource\Model</Filter>
     </ClCompile>
-    <ClCompile Include="JugGfx\ModelImporter_ufbx.cpp">
-      <Filter>Resource\Model</Filter>
+    <ClCompile Include="JugGfx\Shader.cpp">
+      <Filter>Resource\Shader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -129,25 +123,25 @@
     <ClInclude Include="JugGfx\ImageImporter.h">
       <Filter>Resource\Image</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\ImageExporter.h">
+    <ClInclude Include="JugGfx\ImageDetail.h">
       <Filter>Resource\Image</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\ImageDetail.h">
+    <ClInclude Include="JugGfx\ImageExporter.h">
       <Filter>Resource\Image</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Shader.h">
       <Filter>Resource\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\ResourceUtils.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
+    <ClCompile Include="Vendor\ufbx\ufbx\ufbx.c">
+      <Filter>Vendor</Filter>
+    </ClCompile>
     <ClInclude Include="JugGfx\Model.h">
       <Filter>Resource\Model</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\ModelImporter.h">
       <Filter>Resource\Model</Filter>
     </ClInclude>
-    <ClInclude Include="JugGfx\ModelDetail.h">
+    <ClInclude Include="JugGfx\ModelImporterDetail.h">
       <Filter>Resource\Model</Filter>
     </ClInclude>
   </ItemGroup>
@@ -184,6 +178,9 @@
     </Filter>
     <Filter Include="Resource\Model">
       <UniqueIdentifier>{1097a2d0-30df-460a-805c-6f8fba1812ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor">
+      <UniqueIdentifier>{6f1c1a52-5d0f-4a3e-9a58-3c2b7f6d9e41}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

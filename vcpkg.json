@@ -6,20 +6,20 @@
   "homepage": "https://github.com/JuggernautSensei/JugGfx",
   "builtin-baseline": "e3ed41868d5034bc608eaaa58383cd6ecdbb5ffb",
   "dependencies": [
-    {
-      "name": "openimageio",
-      "features": [ "gif" ]
-    },
-    "basisu",
     "cgltf",
-    "ktx",
     "parallel-hashmap",
     "sdl3",
+    "stb",
+    "tinyexr",
     "imguizmo",
     "spdlog",
+    "shader-slang",
     {
       "name": "imgui",
       "features": [ "docking-experimental", "sdl3-binding" ]
     }
+  ],
+  "overrides": [
+    { "name": "shader-slang", "version": "2026.18.2" }
   ]
-}
+}

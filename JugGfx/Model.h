@@ -18,20 +18,21 @@ struct ModelMorphTarget
     Vector<VEC3> tangentDeltas  = {};
 };
 
+// 빈 배열은 해당 속성 없음. 비어 있지 않은 정점 배열은 전부 positions.size() 와 같은 크기.
+// boneIndices / boneWeights 는 함께 있거나 함께 없음. 모프 델타 배열은 positions.size() 크기.
+// indices 는 삼각형 리스트 (indices.size() % 3 == 0). 엔진 규약 (왼손 +Y up, 시계 방향이 앞면).
 struct ModelMesh
 {
-    IndexedFlags<eVertexAttribute>                       attribFlags            = kNoneFlags;
     Vector<VEC3>                                         positions              = {};
     Vector<VEC3>                                         normals                = {};
-    Vector<VEC4>                                         tangents               = {};   // .w: bitangent sign
+    Vector<VEC4>                                         tangents               = {};   // .w: bitangent = Cross(N, T.xyz) * w 의 부호
     ARRAY<Vector<VEC4>, kNumMaxVertexColorAttributes>    colors                 = {};
     ARRAY<Vector<VEC2>, kNumMaxVertexTexCoordAttributes> texCoords              = {};
-    Vector<ARRAY<uint16_t, kNumMaxBoneInfluences>>       boneIndices            = {};
+    Vector<ARRAY<uint16_t, kNumMaxBoneInfluences>>       boneIndices            = {};   // ModelSkin::nodeIndices 안의 위치
     Vector<ARRAY<float, kNumMaxBoneInfluences>>          boneWeights            = {};
     Vector<ModelMorphTarget>                             morphTargets           = {};
     Vector<uint32_t>                                     indices                = {};
     uint32_t                                             materialIndexOrInvalid = kInvalidIndex;
-    AABB                                                 bounds                 = Zero<AABB>();
 };
 
 struct ModelMeshGroup
@@ -61,6 +62,9 @@ struct ModelTextureDesc
     uint32_t               texCoordSet           = 0;                                  // 사용하는 텍스처 좌표 세트 (0~3)
     Flags<eTextureChannel> channelFlags          = eTextureChannel::RGBA;              // 사용하는 채널
     Flags<eSampler>        samplerFlags          = eSampler::Filter_MinMagMipLinear;   // 샘플러 옵션. 기본값은 선형 보간
+    VEC2                   uvOffset              = Zero<VEC2>();                       // KHR_texture_transform
+    float                  uvRotation            = 0.f;                                // 라디안
+    VEC2                   uvScale               = One<VEC2>();
 };
 
 // 표준 외 임의의 텍스처

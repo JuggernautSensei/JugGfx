@@ -30,8 +30,6 @@ String GraphicsCategory::MakeMessage(
             return "Image decoding failed";
         case eGraphicsError::ImageEncodeFailed:
             return "Image encoding failed";
-        case eGraphicsError::ImageProcessFailed:
-            return "Image processing failed";
         case eGraphicsError::ModelUnsupportedFormat:
             return "Model format is not supported";
         case eGraphicsError::ModelParseFailed:

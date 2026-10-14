@@ -44,16 +44,16 @@ namespace
         const uint32_t   _mip)
     {
         const VEC3U size = CalcTextureSize(_desc.width, _desc.height, _desc.depth, _mip);
-        return CalcImageSlicePitch(_desc, size.x, size.y) * size.z;
+        return _desc.CalcSlicePitch(size.x, size.y) * size.z;
     }
 }   // namespace
 
 Optional<eTextureFormat> DeriveGpuFormat(
-    const eChannelFormat _channelFormat,
+    const eChannelFormat _format,
     const uint32_t       _numChannels,
     const bool           _bSRGB)
 {
-    JUG_ASSERT(_channelFormat != eChannelFormat::Compressed, "Compressed image has no derived gpuFormat.\n");
+    JUG_ASSERT(_format != eChannelFormat::Compressed, "Compressed image has no derived gpuFormat.\n");
 
     uint32_t index = 0;
     switch (_numChannels)
@@ -64,7 +64,7 @@ Optional<eTextureFormat> DeriveGpuFormat(
         default: return kNullopt;
     }
 
-    switch (_channelFormat)
+    switch (_format)
     {
         case eChannelFormat::UNorm8:
             if (_bSRGB && index == 2)
@@ -84,81 +84,99 @@ Optional<eTextureFormat> DeriveGpuFormat(
 }
 
 uint32_t GetChannelSize(
-    const eChannelFormat _channelFormat)
+    const eChannelFormat _format)
 {
-    switch (_channelFormat)
+    switch (_format)
     {
-        case eChannelFormat::UNorm8: return 1;
+        case eChannelFormat::UNorm8:
+            return 1;
+
         case eChannelFormat::UNorm16:
-        case eChannelFormat::Half: return 2;
-        case eChannelFormat::Float: return 4;
+        case eChannelFormat::Half:
+            return 2;
+
+        case eChannelFormat::Float:
+            return 4;
 
         default:
-            JUG_ASSERT(false, "Compressed image has no channel size.\n");
             return 0;
     }
 }
 
-size_t CalcImageRowPitch(
-    const ImageDesc& _desc,
-    const uint32_t   _width)
+size_t ImageDesc::CalcRowPitch(
+    const uint32_t _width) const
 {
-    if (_desc.channelFormat == eChannelFormat::Compressed)
+    if (channelFormat == eChannelFormat::Compressed)
     {
-        return CalcRowPitch(_desc.gpuFormat.GetValue(), _width);
+        return jug::CalcRowPitch(gpuFormat.GetValue(), _width);
     }
-    return static_cast<size_t>(_width) * _desc.numChannels * GetChannelSize(_desc.channelFormat);
+    return static_cast<size_t>(_width) * numChannels * GetChannelSize(channelFormat);
 }
 
-size_t CalcImageSlicePitch(
-    const ImageDesc& _desc,
-    const uint32_t   _width,
-    const uint32_t   _height)
+size_t ImageDesc::CalcSlicePitch(
+    const uint32_t _width,
+    const uint32_t _height) const
 {
-    if (_desc.channelFormat == eChannelFormat::Compressed)
+    if (channelFormat == eChannelFormat::Compressed)
     {
-        return CalcSlicePitch(_desc.gpuFormat.GetValue(), _width, _height);
+        return jug::CalcSlicePitch(gpuFormat.GetValue(), _width, _height);
     }
-    return CalcImageRowPitch(_desc, _width) * _height;
+    return CalcRowPitch(_width) * _height;
 }
 
-size_t CalcImageLayerSize(
-    const ImageDesc& _desc)
+size_t ImageDesc::CalcLayerSize() const
 {
-    AssertDesc_(_desc);
+    AssertDesc_(*this);
 
     size_t size = 0;
-    for (uint32_t mip = 0; mip < _desc.numMips; ++mip)
+    for (uint32_t mip = 0; mip < numMips; ++mip)
     {
-        size += CalcMipSize_(_desc, mip);
+        size += CalcMipSize_(*this, mip);
     }
     return size;
 }
 
-size_t CalcImageSize(
-    const ImageDesc& _desc)
+size_t ImageDesc::CalcSize() const
 {
-    return CalcImageLayerSize(_desc) * _desc.numLayers;
+    return CalcLayerSize() * numLayers;
+}
+
+Image::Image(
+    const ImageDesc& _desc,
+    PixelBuffer&&    _pixels)
+    : m_pixels(std::move(_pixels))
+    , m_desc(_desc)
+{
+    JUG_ASSERT(m_pixels.GetSize() == m_desc.CalcSize(), "Image pixels size does not match its desc.\n");
+}
+
+const ImageDesc& Image::GetDesc() const
+{
+    return m_desc;
+}
+
+MemoryView Image::GetPixels() const
+{
+    return { m_pixels.GetPtr(), m_pixels.GetSize() };
 }
 
 SubImage Image::GetSubImage(
     const uint32_t _layer,
     const uint32_t _mip) const
 {
-    JUG_ASSERT(_layer < desc.numLayers, "Layer index out of bounds.\n");
-    JUG_ASSERT(_mip < desc.numMips, "Mip index out of bounds.\n");
+    JUG_ASSERT(_layer < m_desc.numLayers, "Layer index out of bounds.\n");
+    JUG_ASSERT(_mip < m_desc.numMips, "Mip index out of bounds.\n");
 
-    size_t offset = CalcImageLayerSize(desc) * _layer;
+    size_t offset = m_desc.CalcLayerSize() * _layer;
     for (uint32_t mip = 0; mip < _mip; ++mip)
     {
-        offset += CalcMipSize_(desc, mip);
+        offset += CalcMipSize_(m_desc, mip);
     }
 
-    const VEC3U  size       = CalcTextureSize(desc.width, desc.height, desc.depth, _mip);
-    const size_t rowPitch   = CalcImageRowPitch(desc, size.x);
-    const size_t slicePitch = CalcImageSlicePitch(desc, size.x, size.y);
+    const VEC3U  size       = CalcTextureSize(m_desc.width, m_desc.height, m_desc.depth, _mip);
+    const size_t rowPitch   = m_desc.CalcRowPitch(size.x);
+    const size_t slicePitch = m_desc.CalcSlicePitch(size.x, size.y);
     JUG_ASSERT(slicePitch <= Max<uint32_t>(), "Image slice is too large.\n");
-    JUG_ASSERT(offset + slicePitch * size.z <= pixels.GetSize(), "Image pixels are smaller than its desc.\n");
 
     SubImage sub   = {};
     sub.width      = size.x;
@@ -166,7 +184,7 @@ SubImage Image::GetSubImage(
     sub.depth      = size.z;
     sub.rowPitch   = static_cast<uint32_t>(rowPitch);
     sub.slicePitch = static_cast<uint32_t>(slicePitch);
-    sub.pixels     = { pixels.GetPtr() + offset, slicePitch * size.z };
+    sub.pixels     = { m_pixels.GetPtr() + offset, slicePitch * size.z };
     return sub;
 }
 

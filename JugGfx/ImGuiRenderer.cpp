@@ -175,15 +175,16 @@ namespace
         const StringView _entryPoint)
     {
         ShaderCompileConfig config = {};
-        config.type               = _type;
-        config.entryPoint         = _entryPoint;
+        config.type                = _type;
+        config.target              = GetShaderTarget(Graphics::GetSingleton().GetAPI());
+        config.entryPoint          = _entryPoint;
 
         const Result<ShaderBytecode> shader = CompileShader(kShaderSource, config);
         if (!shader)
         {
             JUG_FATAL("ImGuiRenderer: failed to compile {}.", _entryPoint);
         }
-        return Graphics::GetSingleton().CreateShader(shader->GetBytecode());
+        return Graphics::GetSingleton().CreateShader(*shader);
     }
 
     [[nodiscard]] SDL_Window* ToSdlWindow_(

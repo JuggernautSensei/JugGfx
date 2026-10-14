@@ -20,6 +20,7 @@ constexpr uint32_t kNumMaxStreams           = 4;
 
 constexpr uint32_t kCBufferSizeAlign      = 16;
 constexpr uint32_t kInstanceDataSizeAlign = 16;
+constexpr uint32_t kIndirectArgsStride    = 32;
 
 // ===========================================
 //  Enums
@@ -166,6 +167,42 @@ enum class eRenderState : uint32_t
 [[nodiscard]] Flags<eRenderState> FilterTopology(Flags<eRenderState> _flags);
 [[nodiscard]] Flags<eRenderState> FilterCullMode(Flags<eRenderState> _flags);
 [[nodiscard]] Flags<eRenderState> FilterDepthTest(Flags<eRenderState> _flags);
+
+// 파이프라인 상태 그룹별 비트. 변경 감지와 상태 객체 캐시 키에 쓴다.
+constexpr Flags<eRenderState> kTopologyStateMask {
+    eRenderState::Topology_TriangleStrip,
+    eRenderState::Topology_LineList,
+    eRenderState::Topology_LineStrip,
+    eRenderState::Topology_PointList,
+};
+
+constexpr Flags<eRenderState> kRasterizerStateMask {
+    eRenderState::Cull_Front,
+    eRenderState::Cull_Back,
+    eRenderState::Wireframe,
+    eRenderState::MultiSample,
+    eRenderState::LineAA,
+    eRenderState::Scissor,
+    eRenderState::FrontCCW,
+    eRenderState::DepthClamp,
+};
+
+constexpr Flags<eRenderState> kBlendStateMask {
+    eRenderState::AlphaToCoverage,
+    eRenderState::IndependentBlend,
+};
+
+constexpr Flags<eRenderState> kDepthStencilStateMask {
+    eRenderState::DepthWrite,
+    eRenderState::DepthTest_Less,
+    eRenderState::DepthTest_LessEqual,
+    eRenderState::DepthTest_Greater,
+    eRenderState::DepthTest_GreaterEqual,
+    eRenderState::DepthTest_Equal,
+    eRenderState::DepthTest_NotEqual,
+    eRenderState::DepthTest_Always,
+    eRenderState::DepthTest_Never,
+};
 
 enum class eBlend : uint32_t
 {
@@ -564,6 +601,12 @@ struct VertexStream
 {
     VertexBufferHandle vbhOrInvalid = kInvalidHandle;   // 없으면 빈 스트림
     uint32_t           offset       = 0;                // 버텍스 단위 오프셋
+};
+
+enum class eGraphicsAPI
+{
+    Noop,
+    D3D11,
 };
 
 enum class eGraphicsOption : uint32_t

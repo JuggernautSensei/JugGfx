@@ -4,6 +4,17 @@
 namespace jug
 {
 
+enum class eImageFileFormat
+{
+    PNG,
+    JPEG,
+    BMP,
+    TGA,
+    HDR,
+    EXR,
+    DDS,
+};
+
 struct ImageExportConfig
 {
     eImageFileFormat format  = eImageFileFormat::PNG;

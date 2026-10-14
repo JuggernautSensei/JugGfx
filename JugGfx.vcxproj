@@ -15,6 +15,8 @@
     <ClInclude Include="JugGfx\DXGI.h" />
     <ClInclude Include="JugGfx\Geometry.h" />
     <ClInclude Include="JugGfx\Graphics.h" />
+    <ClInclude Include="JugGfx\Graphics_D3D11.h" />
+    <ClInclude Include="JugGfx\Graphics_Noop.h" />
     <ClInclude Include="JugGfx\ImGuiInclude.h" />
     <ClInclude Include="JugGfx\ImGuiImage.h" />
     <ClInclude Include="JugGfx\ImGuiRenderer.h" />
@@ -40,6 +42,8 @@
     <ClCompile Include="JugGfx\DXGI.cpp" />
     <ClCompile Include="JugGfx\Geometry.cpp" />
     <ClCompile Include="JugGfx\Graphics.cpp" />
+    <ClCompile Include="JugGfx\Graphics_D3D11.cpp" />
+    <ClCompile Include="JugGfx\Graphics_Noop.cpp" />
     <ClCompile Include="JugGfx\ImGuiInclude.cpp" />
     <ClCompile Include="JugGfx\ImGuiImage.cpp" />
     <ClCompile Include="JugGfx\ImGuiRenderer.cpp" />

@@ -22,6 +22,8 @@
 #include "Error.h"
 #include "Geometry.h"
 #include "Graphics.h"
+#include "Graphics_D3D11.h"
+#include "Graphics_Noop.h"
 #include "ImGuiImage.h"
 #include "ImGuiInclude.h"
 #include "ImGuiRenderer.h"

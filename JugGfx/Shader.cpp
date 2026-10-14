@@ -185,9 +185,14 @@ namespace
 
         // session
         slang::TargetDesc targetDesc = {};
-        targetDesc.format            = SLANG_DXBC;
-        targetDesc.profile           = pGlobalSession->findProfile("sm_5_0");
-        JUG_ASSERT(targetDesc.profile != SLANG_PROFILE_UNKNOWN, "Slang does not know the sm_5_0 profile.");
+        switch (_config.target)
+        {
+            case eShaderTarget::DXBC:
+                targetDesc.format  = SLANG_DXBC;
+                targetDesc.profile = pGlobalSession->findProfile("sm_5_0");
+                break;
+        }
+        JUG_ASSERT(targetDesc.profile != SLANG_PROFILE_UNKNOWN, "Slang does not know the shader target profile.");
 
         slang::SessionDesc sessionDesc       = {};
         sessionDesc.targets                  = &targetDesc;
@@ -247,6 +252,8 @@ namespace
         // blob 소유권 이전
         ShaderBytecode shader = {};
         shader.pBlob.Reset(pCode.detach());
+        shader.type   = _config.type;
+        shader.target = _config.target;
         return std::move(shader);
     }
 
@@ -277,6 +284,19 @@ Flags<eShaderCompileOption> FilterDebugInfo(
 // ===========================================
 //  Shader
 // ===========================================
+
+eShaderTarget GetShaderTarget(
+    const eGraphicsAPI _api)
+{
+    switch (_api)
+    {
+        case eGraphicsAPI::Noop: return eShaderTarget::DXBC;
+        case eGraphicsAPI::D3D11: return eShaderTarget::DXBC;
+    }
+
+    JUG_ASSERT(false, "Unsupported graphics API.");
+    return eShaderTarget::DXBC;
+}
 
 void BlobDelete::operator()(
     ISlangBlob* _pBlob) const

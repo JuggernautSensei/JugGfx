@@ -82,7 +82,7 @@ static_assert(sizeof(DDS_HEADER_DX10) == 20);
 // R32G32B32_FLOAT. eTextureFormat 에 없는 유일한 지원 포맷
 constexpr uint32_t kDxgiFormatR32G32B32Float = 6;
 
-// DXGI 포맷 <-> Image 포맷 대응표의 한 행
+// DXGI 포맷, Image 포맷 대응표의 한 행
 struct ImageFormatEntry
 {
     uint32_t                 dxgiFormat    = 0;

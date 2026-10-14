@@ -118,10 +118,7 @@ namespace
         desc.gpuFormat     = DeriveGpuFormat(desc.channelFormat, desc.numChannels, desc.bSRGB);
 
         // stb 의 malloc 결과를 복사 없이 채택 (ImageAllocator 가 free)
-        Image image  = {};
-        image.pixels = PixelBuffer { static_cast<std::byte*>(pPixels), CalcImageSize(desc) };
-        image.desc   = desc;
-        return std::move(image);
+        return Image(desc, PixelBuffer { static_cast<std::byte*>(pPixels), desc.CalcSize() });
     }
 
     [[nodiscard]] Result<Image> ImportGif_(
@@ -149,10 +146,7 @@ namespace
         desc.bSRGB         = _flags.Has(eImageImportOption::SRGB);
         desc.gpuFormat     = DeriveGpuFormat(desc.channelFormat, desc.numChannels, desc.bSRGB);
 
-        Image image  = {};
-        image.pixels = PixelBuffer { reinterpret_cast<std::byte*>(pPixels), CalcImageSize(desc) };
-        image.desc   = desc;
-        return std::move(image);
+        return Image(desc, PixelBuffer { reinterpret_cast<std::byte*>(pPixels), desc.CalcSize() });
     }
 
     // ===========================================
@@ -240,12 +234,10 @@ namespace
         const uint32_t channelSize = GetChannelSize(desc.channelFormat);
         const size_t   numPixels   = static_cast<size_t>(desc.width) * desc.height;
 
-        Image image  = {};
-        image.pixels = PixelBuffer { kNoInit, CalcImageSize(desc) };
-        image.desc   = desc;
+        PixelBuffer pixels = { kNoInit, desc.CalcSize() };
 
         // planar 채널을 interleave
-        std::byte* pDst = image.pixels.GetPtr();
+        std::byte* pDst = pixels.GetPtr();
         for (uint32_t slot = 0; slot < numChannels; ++slot)
         {
             const std::byte* pSrc = reinterpret_cast<const std::byte*>(exrImage.images[slotChannels[slot]]);
@@ -256,7 +248,7 @@ namespace
         }
 
         FreeEXRImage(&exrImage);
-        return std::move(image);
+        return Image(desc, std::move(pixels));
     }
 
     [[nodiscard]] Result<Image> ImportExr_(
@@ -473,7 +465,7 @@ namespace
         }
 
         // 파일 데이터 배치(레이어 -> mip 큰 것부터)가 Image 와 같음
-        const size_t layerSize = CalcImageLayerSize(desc);
+        const size_t layerSize = desc.CalcLayerSize();
         const size_t remaining = _mem.GetSize() - offset;
         if (remaining % layerSize != 0 || remaining / layerSize != desc.numLayers)
         {
@@ -481,11 +473,9 @@ namespace
             return eGraphicsError::ImageInvalidData;
         }
 
-        Image image  = {};
-        image.pixels = PixelBuffer { kNoInit, remaining };
-        image.desc   = desc;
-        std::memcpy(image.pixels.GetPtr(), _mem.GetPtr() + offset, remaining);
-        return std::move(image);
+        PixelBuffer pixels = { kNoInit, remaining };
+        std::memcpy(pixels.GetPtr(), _mem.GetPtr() + offset, remaining);
+        return Image(desc, std::move(pixels));
     }
 
     // ===========================================
@@ -582,7 +572,7 @@ namespace
     [[nodiscard]] Error Decompress_(
         Image& _image)
     {
-        const ImageDesc&     srcDesc  = _image.desc;
+        const ImageDesc      srcDesc  = _image.GetDesc();
         const eTextureFormat bcFormat = srcDesc.gpuFormat.GetValue();
 
         const DecompressedFormat* pDecompressedOrNull = nullptr;
@@ -607,8 +597,8 @@ namespace
 
         const uint32_t pixelSize = dstDesc.numChannels * GetChannelSize(dstDesc.channelFormat);
 
-        PixelBuffer      dstPixels = { kNoInit, CalcImageSize(dstDesc) };
-        const std::byte* pSrc      = _image.pixels.GetPtr();
+        PixelBuffer      dstPixels = { kNoInit, dstDesc.CalcSize() };
+        const std::byte* pSrc      = _image.GetPixels().GetPtr();
         std::byte*       pDst      = dstPixels.GetPtr();
         for (uint32_t layer = 0; layer < srcDesc.numLayers; ++layer)
         {
@@ -618,14 +608,13 @@ namespace
                 for (uint32_t slice = 0; slice < size.z; ++slice)
                 {
                     DecompressSlice_(bcFormat, pSrc, pDst, size.x, size.y, pixelSize);
-                    pSrc += CalcImageSlicePitch(srcDesc, size.x, size.y);
-                    pDst += CalcImageSlicePitch(dstDesc, size.x, size.y);
+                    pSrc += srcDesc.CalcSlicePitch(size.x, size.y);
+                    pDst += dstDesc.CalcSlicePitch(size.x, size.y);
                 }
             }
         }
 
-        _image.pixels = std::move(dstPixels);
-        _image.desc   = dstDesc;
+        _image = Image(dstDesc, std::move(dstPixels));
         return kOK;
     }
 
@@ -637,11 +626,11 @@ namespace
     void PadToFourChannels_(
         Image& _image)
     {
-        ImageDesc& desc = _image.desc;
+        const ImageDesc desc = _image.GetDesc();
         JUG_ASSERT(desc.channelFormat != eChannelFormat::Compressed && desc.numChannels == 3, "Only 3 channel images can be padded.\n");
 
         const uint32_t channelSize = GetChannelSize(desc.channelFormat);
-        const size_t   numPixels   = CalcImageSize(desc) / (3 * channelSize);
+        const size_t   numPixels   = desc.CalcSize() / (3 * channelSize);
 
         ImageDesc paddedDesc   = desc;
         paddedDesc.numChannels = 4;
@@ -649,8 +638,8 @@ namespace
 
         const uint32_t alpha = kAlphaOnes[static_cast<size_t>(desc.channelFormat)];
 
-        PixelBuffer      padded = { kNoInit, CalcImageSize(paddedDesc) };
-        const std::byte* pSrc   = _image.pixels.GetPtr();
+        PixelBuffer      padded = { kNoInit, paddedDesc.CalcSize() };
+        const std::byte* pSrc   = _image.GetPixels().GetPtr();
         std::byte*       pDst   = padded.GetPtr();
         for (size_t i = 0; i < numPixels; ++i)
         {
@@ -658,8 +647,7 @@ namespace
             std::memcpy(pDst + (i * 4 + 3) * channelSize, &alpha, channelSize);
         }
 
-        _image.pixels = std::move(padded);
-        desc          = paddedDesc;
+        _image = Image(paddedDesc, std::move(padded));
     }
 
     // 디코딩 후 옵션 적용
@@ -667,14 +655,14 @@ namespace
         Image&                          _image,
         const Flags<eImageImportOption> _flags)
     {
-        if (_flags.Has(eImageImportOption::Decompress) && _image.desc.channelFormat == eChannelFormat::Compressed)
+        if (_flags.Has(eImageImportOption::Decompress) && _image.GetDesc().channelFormat == eChannelFormat::Compressed)
         {
             JUG_RETURN_IF_ERROR(Decompress_(_image));
         }
 
         if (_flags.Has(eImageImportOption::GpuCompatible))
         {
-            const ImageDesc& desc = _image.desc;
+            const ImageDesc& desc = _image.GetDesc();
             if (desc.width > kMaxGpuTextureSize || desc.height > kMaxGpuTextureSize || desc.depth > kMaxGpuTextureDepth || desc.numLayers > kMaxGpuTextureLayers)
             {
                 JUG_CORE_LOG_ERROR("ImportImage: image {}x{}x{} (layers {}) exceeds the GPU limits", desc.width, desc.height, desc.depth, desc.numLayers);
@@ -684,7 +672,7 @@ namespace
             {
                 PadToFourChannels_(_image);
             }
-            JUG_ASSERT(_image.desc.gpuFormat.HasValue(), "GpuCompatible image must have a gpuFormat.\n");
+            JUG_ASSERT(_image.GetDesc().gpuFormat.HasValue(), "GpuCompatible image must have a gpuFormat.\n");
         }
         return kOK;
     }

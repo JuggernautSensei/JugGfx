@@ -25,6 +25,12 @@
     <ClCompile Include="JugGfx\Graphics.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="JugGfx\Graphics_D3D11.cpp">
+      <Filter>Graphics\DirectX</Filter>
+    </ClCompile>
+    <ClCompile Include="JugGfx\Graphics_Noop.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="JugGfx\Texture.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -94,6 +100,12 @@
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Graphics.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Graphics_D3D11.h">
+      <Filter>Graphics\DirectX</Filter>
+    </ClInclude>
+    <ClInclude Include="JugGfx\Graphics_Noop.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="JugGfx\Texture.h">

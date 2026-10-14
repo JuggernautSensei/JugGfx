@@ -10,7 +10,16 @@ namespace jug
 //  Shader
 // ===========================================
 
-// Slang compiler options (target: D3D11 / DXBC / SM5.x)
+// 컴파일 결과물의 형식. 그래픽스 API 마다 받아들이는 타깃이 정해져 있다.
+enum class eShaderTarget
+{
+    DXBC,   // D3D11, sm_5_0
+};
+
+// 해당 API 가 받아들이는 셰이더 타깃. Noop 은 검사하지 않으므로 DXBC 로 컴파일한다.
+[[nodiscard]] eShaderTarget GetShaderTarget(eGraphicsAPI _api);
+
+// Slang compiler options
 enum class eShaderCompileOption : uint32_t
 {
     None = 0,
@@ -70,6 +79,7 @@ struct ShaderMacro
 struct ShaderCompileConfig
 {
     eShader                     type         = eShader::Vertex;
+    eShaderTarget               target       = eShaderTarget::DXBC;
     StringView                  entryPoint   = {};
     Span<const ShaderMacro>     macros       = {};
     Span<const StringView>      includePaths = {};
@@ -85,7 +95,9 @@ struct ShaderBytecode
 {
     [[nodiscard]] MemoryView GetBytecode() const;
 
-    Scoped<ISlangBlob, BlobDelete> pBlob = nullptr;
+    Scoped<ISlangBlob, BlobDelete> pBlob  = nullptr;
+    eShader                        type   = eShader::Vertex;       // 컴파일한 스테이지
+    eShaderTarget                  target = eShaderTarget::DXBC;   // 컴파일한 타깃
 };
 
 [[nodiscard]] Result<ShaderBytecode> CompileShader(StringView _source, const ShaderCompileConfig& _config);

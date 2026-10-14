@@ -38,10 +38,10 @@ namespace
         const Image&             _image,
         const ImageExportConfig& _config)
     {
-        JUG_ASSERT(_config.layer < _image.desc.numLayers, "Export layer index out of bounds.\n");
-        JUG_ASSERT(_config.mip < _image.desc.numMips, "Export mip index out of bounds.\n");
+        JUG_ASSERT(_config.layer < _image.GetDesc().numLayers, "Export layer index out of bounds.\n");
+        JUG_ASSERT(_config.mip < _image.GetDesc().numMips, "Export mip index out of bounds.\n");
 
-        if (_image.desc.depth > 1)
+        if (_image.GetDesc().depth > 1)
         {
             JUG_CORE_LOG_ERROR("ExportImage: a volume image can not be written to a single image format");
             return eGraphicsError::ImageUnsupportedFeature;
@@ -62,7 +62,7 @@ namespace
         const ImageExportConfig& _config,
         ByteBuffer&              _out)
     {
-        const ImageDesc& desc = _image.desc;
+        const ImageDesc& desc = _image.GetDesc();
         if (desc.channelFormat != eChannelFormat::UNorm8)
         {
             JUG_CORE_LOG_ERROR("ExportImage: only 8 bit images can be written to this format");
@@ -128,7 +128,7 @@ namespace
         const SubImage& _sub,
         ByteBuffer&     _out)
     {
-        const ImageDesc& desc = _image.desc;
+        const ImageDesc& desc = _image.GetDesc();
         if (desc.channelFormat != eChannelFormat::Float)
         {
             JUG_CORE_LOG_ERROR("ExportImage: only float images can be written to HDR");
@@ -149,7 +149,7 @@ namespace
         const SubImage& _sub,
         ByteBuffer&     _out)
     {
-        const ImageDesc& desc = _image.desc;
+        const ImageDesc& desc = _image.GetDesc();
         if (desc.channelFormat != eChannelFormat::Half && desc.channelFormat != eChannelFormat::Float)
         {
             JUG_CORE_LOG_ERROR("ExportImage: only half / float images can be written to EXR");
@@ -219,7 +219,7 @@ namespace
         const Image& _image,
         ByteBuffer&  _out)
     {
-        const ImageDesc& desc = _image.desc;
+        const ImageDesc& desc = _image.GetDesc();
 
         const image_detail::ImageFormatEntry* pFormatOrNull = nullptr;
         if (desc.gpuFormat.HasValue())
@@ -245,7 +245,7 @@ namespace
         header.flags                    = image_detail::kDdsdCaps | image_detail::kDdsdHeight | image_detail::kDdsdWidth | image_detail::kDdsdPixelFormat | image_detail::kDdsdMipMapCount | (bCompressed ? image_detail::kDdsdLinearSize : image_detail::kDdsdPitch) | (bVolume ? image_detail::kDdsdDepth : 0);
         header.height                   = desc.height;
         header.width                    = desc.width;
-        header.pitchOrLinearSize        = static_cast<uint32_t>(bCompressed ? CalcImageSlicePitch(desc, desc.width, desc.height) : CalcImageRowPitch(desc, desc.width));
+        header.pitchOrLinearSize        = static_cast<uint32_t>(bCompressed ? desc.CalcSlicePitch(desc.width, desc.height) : desc.CalcRowPitch(desc.width));
         header.depth                    = desc.depth;
         header.mipMapCount              = desc.numMips;
         header.ddspf.size               = sizeof(header.ddspf);
@@ -261,12 +261,11 @@ namespace
         dx10.arraySize                     = desc.bCubemap ? desc.numLayers / 6 : desc.numLayers;   // 큐브 개수
 
         // 레이어, mip 전부 그대로
-        const size_t pixelsSize = CalcImageSize(desc);
-        JUG_ASSERT(_image.pixels.GetSize() >= pixelsSize, "Image pixels are smaller than its desc.\n");
+        const MemoryView pixels = _image.GetPixels();
 
         constexpr uint32_t kMagic = image_detail::kDdsMagic;
 
-        _out.ResizeUninitialized(sizeof(kMagic) + sizeof(header) + sizeof(dx10) + pixelsSize);
+        _out.ResizeUninitialized(sizeof(kMagic) + sizeof(header) + sizeof(dx10) + pixels.GetSize());
         std::byte* pDst = _out.GetPtr();
         std::memcpy(pDst, &kMagic, sizeof(kMagic));
         pDst += sizeof(kMagic);
@@ -274,7 +273,7 @@ namespace
         pDst += sizeof(header);
         std::memcpy(pDst, &dx10, sizeof(dx10));
         pDst += sizeof(dx10);
-        std::memcpy(pDst, _image.pixels.GetPtr(), pixelsSize);
+        std::memcpy(pDst, pixels.GetPtr(), pixels.GetSize());
         return kOK;
     }
 }   // namespace
@@ -283,9 +282,7 @@ Result<ByteBuffer> ExportImage(
     const Image&             _image,
     const ImageExportConfig& _config)
 {
-    JUG_ASSERT(_config.format != eImageFileFormat::GIF, "GIF is import only.\n");
-    JUG_ASSERT(_image.pixels.GetSize() >= CalcImageSize(_image.desc), "Image pixels are smaller than its desc.\n");
-    JUG_ASSERT(_image.desc.numChannels <= kMaxChannels, "Image can not have more than 4 channels.\n");
+    JUG_ASSERT(_image.GetDesc().numChannels <= kMaxChannels, "Image can not have more than 4 channels.\n");
 
     ByteBuffer out = {};
     if (_config.format == eImageFileFormat::DDS)

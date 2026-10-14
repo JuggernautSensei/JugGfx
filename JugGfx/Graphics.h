@@ -197,6 +197,18 @@ class Graphics
         bool          bDynamic  = false;
     };
 
+    // 스테이징 읽기 요청. readyFrame 에 도달한 Frame() 에서 Map -> tight 복사 -> Unmap.
+    struct ReadbackRequest
+    {
+        ID3D11Resource*   pResource  = nullptr;
+        uint32_t          index      = 0;
+        uint32_t          rowPitch   = 0;   // tight 줄 바이트 수
+        uint32_t          numRows    = 0;   // 슬라이스당 줄 수(compressed 면 블록 줄)
+        uint32_t          depth      = 0;
+        MutableMemoryView dst        = {};
+        uint64_t          readyFrame = 0;
+    };
+
 public:
     explicit Graphics(Flags<eGraphicsOption> _flags);
     ~Graphics();
@@ -212,6 +224,7 @@ public:
     size_t                             ReportLiveObjects();
     [[nodiscard]] const GraphicsCaps&  GetCaps() const;
     [[nodiscard]] const GraphicsStats& GetStats() const;
+    [[nodiscard]] uint64_t             GetFrameIndex() const;
 
     // ===========================================
     //  Vertex Stream
@@ -291,7 +304,8 @@ public:
         uint32_t  _srcOffset,
         uint32_t  _byteWidthOrInvalid);   // kInvalidIndex 이면 src 끝까지
 
-    [[nodiscard]] size_t ReadBuffer(
+    // GetFrameIndex() >= 반환값 이면 _dst 가 채워져 있다. 그때까지 _dst 는 호출자가 유지해야 한다.
+    [[nodiscard]] uint64_t ReadBuffer(
         StorageBufferHandle _readbackSbh,
         MutableMemoryView   _dst);
 
@@ -377,11 +391,12 @@ public:
         uint32_t      _heightOrInvalid,
         uint32_t      _depthOrInvalid);
 
-    [[nodiscard]] size_t ReadTexture(
+    // GetFrameIndex() >= 반환값 이면 _dst 가 채워져 있다. 그때까지 _dst 는 호출자가 유지해야 한다.
+    [[nodiscard]] uint64_t ReadTexture(
         TextureHandle     _readbackTexh,
-        uint32_t          _mip,
-        uint32_t          _layer,
-        MutableMemoryView _dst);
+        MutableMemoryView _dst,
+        uint32_t          _layer = 0,
+        uint32_t          _mip   = 0);
 
     // ===========================================
     //  Frame Buffer
@@ -684,6 +699,15 @@ private:
     [[nodiscard]] ResolveBufferRefResult ResolveBufferRef_(
         BufferRef _buffer);
 
+    void CompleteReadback_(
+        const ReadbackRequest& _request);
+
+    [[nodiscard]] uint64_t RequestReadback_(
+        const ReadbackRequest& _request);
+
+    [[nodiscard]] bool IsReadbackPending_(
+        const ID3D11Resource* _pResource) const;
+
     // ===========================================
     //  Texture
     // ===========================================
@@ -833,6 +857,11 @@ private:
     GraphicsStats m_lastStats = {};
 
     uint64_t m_frameIndex = 0;
+
+    static constexpr uint64_t kReadbackLatency = 1;
+
+    Vector<ReadbackRequest> m_readbackRequests   = {};
+    bool                    m_bReadbackNeedFlush = false;
 
     static constexpr size_t kNumTimerQueries = 16;
     RingBuffer<TimerQuery>  m_timerQueries { kNumTimerQueries };

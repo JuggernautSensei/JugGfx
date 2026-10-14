@@ -1093,6 +1093,11 @@ const GraphicsStats& Graphics::GetStats() const
     return m_lastStats;
 }
 
+uint64_t Graphics::GetFrameIndex() const
+{
+    return m_frameIndex;
+}
+
 // ===========================================
 //  Vertex Stream
 // ===========================================
@@ -1301,6 +1306,7 @@ void Graphics::CopyBuffer(
     const ResolveBufferRefResult src = ResolveBufferRef_(_src);
 
     JUG_ASSERT(!dst.bDynamic, "A dynamic buffer cannot be a copy destination.");
+    JUG_ASSERT(!IsReadbackPending_(dst.pBuffer), "A readback buffer with a pending read cannot be a copy destination.");
     JUG_ASSERT(dst.pBuffer != src.pBuffer, "A buffer cannot be copied onto itself.");
     JUG_ASSERT(dst.byteWidth == src.byteWidth, "A whole buffer copy requires both buffers to have the same size.");
 
@@ -1318,6 +1324,7 @@ void Graphics::CopyBuffer(
     const ResolveBufferRefResult src = ResolveBufferRef_(_src);
 
     JUG_ASSERT(!dst.bDynamic, "A dynamic buffer cannot be a copy destination.");
+    JUG_ASSERT(!IsReadbackPending_(dst.pBuffer), "A readback buffer with a pending read cannot be a copy destination.");
     JUG_ASSERT(_srcOffset < src.byteWidth, "Buffer copy source offset is out of bounds.");
 
     const uint32_t size = _byteWidthOrInvalid == kInvalidIndex ? src.byteWidth - _srcOffset : _byteWidthOrInvalid;
@@ -1336,21 +1343,71 @@ void Graphics::CopyBuffer(
     m_pD3d11DeviceContext->CopySubresourceRegion(dst.pBuffer, 0, _dstOffset, 0, 0, src.pBuffer, 0, &box);
 }
 
-size_t Graphics::ReadBuffer(
+void Graphics::CompleteReadback_(
+    const ReadbackRequest& _request)
+{
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    JUG_DX_CHECK(m_pD3d11DeviceContext->Map(_request.pResource, _request.index, D3D11_MAP_READ, 0, &mapped));
+
+    const std::byte* pSrcBase = static_cast<const std::byte*>(mapped.pData);
+    std::byte*       pDstBase = _request.dst.GetPtr();
+
+    size_t written = 0;
+    for (uint32_t z = 0; z < _request.depth; ++z)
+    {
+        for (uint32_t y = 0; y < _request.numRows; ++y)
+        {
+            const std::byte* pSrc = pSrcBase + static_cast<size_t>(z) * mapped.DepthPitch + static_cast<size_t>(y) * mapped.RowPitch;
+            std::memcpy(pDstBase + written, pSrc, _request.rowPitch);
+            written += _request.rowPitch;
+        }
+    }
+
+    m_pD3d11DeviceContext->Unmap(_request.pResource, _request.index);
+}
+
+uint64_t Graphics::RequestReadback_(
+    const ReadbackRequest& _request)
+{
+    JUG_ASSERT(!_request.dst.IsEmpty(), "A readback requires a non-empty destination.");
+    JUG_ASSERT(!IsReadbackPending_(_request.pResource), "A readback is already pending on this resource.");
+
+    ReadbackRequest request = _request;
+    request.readyFrame      = m_frameIndex + kReadbackLatency + 1;   // 처리하는 Frame() 이 증가시킨 뒤의 인덱스
+    m_readbackRequests.push_back(request);
+    m_bReadbackNeedFlush = true;
+    return request.readyFrame;
+}
+
+bool Graphics::IsReadbackPending_(
+    const ID3D11Resource* _pResource) const
+{
+    for (const ReadbackRequest& request: m_readbackRequests)
+    {
+        if (request.pResource == _pResource)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+uint64_t Graphics::ReadBuffer(
     const StorageBufferHandle _readbackSbh,
     const MutableMemoryView   _dst)
 {
-    JUG_ASSERT(!_dst.IsEmpty(), "ReadBuffer requires a non-empty destination buffer.");
-
     const StorageBufferD3D11& sb = m_storageBufferPool[_readbackSbh];
     JUG_ASSERT(sb.type == eStorageBuffer::Readback, "ReadBuffer can only be called on a readback storage buffer.");
+    JUG_ASSERT(_dst.GetSize() >= sb.byteWidth, "ReadBuffer destination is smaller than the buffer.");
 
-    D3D11_MAPPED_SUBRESOURCE mapped;
-    JUG_DX_CHECK(m_pD3d11DeviceContext->Map(sb.pBuffer, 0, D3D11_MAP_READ, 0, &mapped));
-    const size_t read = Min(_dst.GetSize(), static_cast<size_t>(sb.byteWidth));
-    std::memcpy(_dst.GetPtr(), mapped.pData, read);
-    m_pD3d11DeviceContext->Unmap(sb.pBuffer, 0);
-    return read;
+    ReadbackRequest request = {};
+    request.pResource       = sb.pBuffer;
+    request.index           = 0;
+    request.rowPitch        = sb.byteWidth;
+    request.numRows         = 1;
+    request.depth           = 1;
+    request.dst             = _dst;
+    return RequestReadback_(request);
 }
 
 // ===========================================
@@ -1953,7 +2010,8 @@ Graphics::TextureD3D11 Graphics::CreateTexture_(
     JUG_ASSERT(!b3D || _numLayers == 1, "A 3D texture cannot have layers. Use the depth instead.");
     JUG_ASSERT(b3D || _depth == 1, "Only a 3D texture can have a depth greater than 1.");
     JUG_ASSERT(!bDepth || !_flags.Has(eTextureOption::ShaderReadWrite), "A depth-stencil texture cannot be bound as an unordered access view.");
-    JUG_ASSERT(!bReadback || _flags.GetFlags() == static_cast<uint32_t>(eTextureOption::Readback), "A readback texture cannot carry any other option.");
+    JUG_ASSERT(!bReadback || (_flags.GetFlags() & ~(static_cast<uint32_t>(eTextureOption::Readback) | static_cast<uint32_t>(eTextureOption::HasMips))) == 0, "A readback texture cannot carry any option other than HasMips.");
+    JUG_ASSERT(!bReadback || (_format != eTextureFormat::D24_UNorm_S8_UInt && _format != eTextureFormat::D32_Float_S8_UInt), "A readback texture cannot use a depth-stencil format with a stencil plane.");
     JUG_ASSERT(!bReadback || _initDataOrEmpty.IsEmpty(), "A readback texture cannot be initialized with data.");
     JUG_ASSERT(!bReadback || _msaa == eMSAA::None, "A readback texture cannot be multisampled.");
     JUG_ASSERT(!b3D || _msaa == eMSAA::None, "A 3D texture cannot be multisampled.");
@@ -2295,6 +2353,7 @@ void Graphics::CopyTexture(
     const TextureD3D11& src = m_texturePool[_srcTexh];
 
     JUG_ASSERT(!dst.bImmutable, "An immutable texture cannot be a copy destination.");
+    JUG_ASSERT(!IsReadbackPending_(dst.pResource), "A readback texture with a pending read cannot be a copy destination.");
     JUG_ASSERT(dst.pResource != src.pResource, "A texture cannot be copied onto itself.");
     JUG_ASSERT(dst.type == src.type && dst.width == src.width && dst.height == src.height && dst.depth == src.depth && dst.numMips == src.numMips && dst.numLayers == src.numLayers && dst.msaa == src.msaa, "A whole texture copy requires both textures to have the same shape.");
     JUG_ASSERT(MakeTextureFormatInfo_(dst.format).tex == MakeTextureFormatInfo_(src.format).tex, "A texture copy requires both textures to share the same typeless format.");
@@ -2328,6 +2387,7 @@ void Graphics::CopyTexture(
     const VEC3U    srcSize  = CalcTextureSize(src.width, src.height, src.depth, _srcMip);
 
     JUG_ASSERT(!dst.bImmutable, "An immutable texture cannot be a copy destination.");
+    JUG_ASSERT(!IsReadbackPending_(dst.pResource), "A readback texture with a pending read cannot be a copy destination.");
     JUG_ASSERT(_dstMip < dst.numMips && _dstLayer < dst.numLayers, "Texture copy destination subresource is out of range.");
     JUG_ASSERT(_srcMip < src.numMips && _srcLayer < src.numLayers, "Texture copy source subresource is out of range.");
     JUG_ASSERT(dst.pResource != src.pResource || dstIndex != srcIndex, "A texture cannot be copied onto itself.");
@@ -2355,46 +2415,27 @@ void Graphics::CopyTexture(
     m_pD3d11DeviceContext->CopySubresourceRegion(dst.pResource, dstIndex, _dstX, _dstY, _dstZ, src.pResource, srcIndex, bWholeSubresource ? nullptr : &box);
 }
 
-size_t Graphics::ReadTexture(
+uint64_t Graphics::ReadTexture(
     const TextureHandle     _readbackTexh,
-    const uint32_t          _mip,
+    const MutableMemoryView _dst,
     const uint32_t          _layer,
-    const MutableMemoryView _dst)
+    const uint32_t          _mip)
 {
-    JUG_ASSERT(!_dst.IsEmpty(), "ReadTexture requires a non-empty destination.");
-
     const TextureD3D11& texture = m_texturePool[_readbackTexh];
     JUG_ASSERT(texture.flags & eTextureOption::Readback, "ReadTexture requires a readback texture. Copy into one first.");
     JUG_ASSERT(_mip < texture.numMips && _layer < texture.numLayers, "Texture subresource is out of range.");
 
-    const uint32_t index      = CalcTextureIndex(_mip, _layer, texture.numMips);
-    const VEC3U    size       = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
-    const uint32_t rowPitch   = CalcRowPitch(texture.format, size.width);
-    const uint32_t numRows    = CalcNumRows(texture.format, size.height);   // compressed 면 블록 줄 수
-    const uint32_t slicePitch = rowPitch * numRows;
-    const uint32_t byteWidth  = slicePitch * size.depth;
-    const uint32_t read       = Min(static_cast<uint32_t>(_dst.GetSize()), byteWidth);
+    const VEC3U size = CalcTextureSize(texture.width, texture.height, texture.depth, _mip);
 
-    D3D11_MAPPED_SUBRESOURCE mapped = {};
-    JUG_DX_CHECK(m_pD3d11DeviceContext->Map(texture.pResource, index, D3D11_MAP_READ, 0, &mapped));
-
-    const std::byte* pSrcBase = static_cast<const std::byte*>(mapped.pData);
-    std::byte*       pDstBase = _dst.GetPtr();
-
-    uint32_t written = 0;
-    for (uint32_t z = 0; z < size.depth && written < read; ++z)
-    {
-        for (uint32_t y = 0; y < numRows && written < read; ++y)
-        {
-            const std::byte* pSrc = pSrcBase + z * mapped.DepthPitch + y * mapped.RowPitch;
-            const uint32_t   copy = Min(rowPitch, read - written);
-            std::memcpy(pDstBase + written, pSrc, copy);
-            written += copy;
-        }
-    }
-
-    m_pD3d11DeviceContext->Unmap(texture.pResource, index);
-    return written;
+    ReadbackRequest request = {};
+    request.pResource       = texture.pResource;
+    request.index           = CalcTextureIndex(_mip, _layer, texture.numMips);
+    request.rowPitch        = CalcRowPitch(texture.format, size.width);
+    request.numRows         = CalcNumRows(texture.format, size.height);   // compressed 면 블록 줄 수
+    request.depth           = size.depth;
+    request.dst             = _dst;
+    JUG_ASSERT(_dst.GetSize() >= static_cast<size_t>(request.rowPitch) * request.numRows * request.depth, "ReadTexture destination is smaller than the subresource.");
+    return RequestReadback_(request);
 }
 
 // ===========================================
@@ -2764,6 +2805,28 @@ void Graphics::Frame()
             m_stats.gpuMemoryUsed = vmi.CurrentUsage;
             m_stats.gpuMemorySize = vmi.Budget;
         }
+    }
+
+    // readback. 요청이 들어온 프레임에는 GPU 가 일찍 시작하도록 한 번 Flush 한다.
+    if (m_bReadbackNeedFlush)
+    {
+        m_pD3d11DeviceContext->Flush();
+        m_bReadbackNeedFlush = false;
+    }
+
+    // 이 Frame() 이 증가시킨 뒤의 인덱스가 readyFrame 에 도달하는 요청을 처리한다.
+    const uint64_t nextFrameIndex = m_frameIndex + 1;
+    for (size_t i = 0; i < m_readbackRequests.size();)
+    {
+        const ReadbackRequest& request = m_readbackRequests[i];
+        if (request.readyFrame > nextFrameIndex)
+        {
+            ++i;
+            continue;
+        }
+        CompleteReadback_(request);
+        m_readbackRequests[i] = m_readbackRequests.back();
+        m_readbackRequests.pop_back();
     }
 
     // 이번 프레임에 쌓인 디버그 메시지를 출력
@@ -3150,6 +3213,7 @@ void Graphics::Destroy(
     const StorageBufferHandle _sbh)
 {
     StorageBufferD3D11& sb = m_storageBufferPool[_sbh];
+    JUG_ASSERT(!IsReadbackPending_(sb.pBuffer), "A buffer with a pending readback cannot be destroyed.");
 
     const ResourceRef resource = _sbh;
     for (ReadBind& bind: m_readBind)
@@ -3198,6 +3262,7 @@ void Graphics::Destroy(
     }
 
     // refcount == 0.
+    JUG_ASSERT(!IsReadbackPending_(texture.pResource), "A texture with a pending readback cannot be destroyed.");
     const ResourceRef resource = _texh;
     for (ReadBind& bind: m_readBind)
     {
